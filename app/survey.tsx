@@ -200,7 +200,7 @@ export default function SurveyScreen() {
           onPress={handleNext}
           variant="primary"
           size="medium"
-          disabled={!answers[currentQuestion.id]}
+          disabled={answers[currentQuestion.id] == null}
           style={styles.menuButton}
         />
       </View>

@@ -1,11 +1,11 @@
-import { TossColors, TossSpacing, TossTypography, TossRadius } from '@/constants/toss-design-system';
-import React, { useState, useEffect } from 'react';
+import { TossColors, TossRadius, TossSpacing, TossTypography } from '@/constants/toss-design-system';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  PanResponder,
   StyleSheet,
+  Text,
   View,
   ViewStyle,
-  PanResponder,
-  Text,
 } from 'react-native';
 
 interface TossSliderProps {
@@ -38,11 +38,14 @@ export function TossSlider({
   labelFormat = (value) => value.toString(),
 }: TossSliderProps) {
   const [currentValue, setCurrentValue] = useState(value);
-  const trackWidth = 295; // 토스 디자인 기준 트랙 너비
-  const thumbWidth = 32; // 손잡이 너비
+  const trackWidth = 295; // ?�스 ?�자??기�? ?�랙 ?�비
+  const thumbWidth = 32; // ?�잡???�비
   const trackHeight = 8;
 
-  // 현재 값에 따른 손잡이 포지션 계산
+  // Drag start thumb position (px) captured on grant
+  const startPixelPosRef = useRef(0);
+
+  // ?�재 값에 ?�른 ?�잡???��???계산
   const normalizedValue = (currentValue - minimumValue) / (maximumValue - minimumValue);
   const thumbPosition = normalizedValue * (trackWidth - thumbWidth);
 
@@ -54,19 +57,15 @@ export function TossSlider({
     onStartShouldSetPanResponder: () => !disabled,
     onMoveShouldSetPanResponder: () => !disabled,
     onPanResponderGrant: () => {
+      // Capture thumb start position in pixels
+      const startNormalized = (currentValue - minimumValue) / (maximumValue - minimumValue);
+      startPixelPosRef.current = startNormalized * (trackWidth - thumbWidth);
       onSliderStart?.();
     },
     onPanResponderMove: (_, gestureState) => {
       if (disabled) return;
       
-      // 현재 값을 픽셀 위치로 변환
-      const normalizedValue = (currentValue - minimumValue) / (maximumValue - minimumValue);
-      const currentPixelPos = normalizedValue * (trackWidth - thumbWidth);
-      
-      // 새로운 픽셀 위치 계산 (제스처 이동량만큼 더함)
-      const newPixelPos = Math.max(0, Math.min(trackWidth - thumbWidth, currentPixelPos + gestureState.dx));
-      
-      // 픽셀 위치를 값으로 변환
+      const newPixelPos = Math.max(0, Math.min(trackWidth - thumbWidth, startPixelPosRef.current + gestureState.dx));
       const newValue = minimumValue + (newPixelPos / (trackWidth - thumbWidth)) * (maximumValue - minimumValue);
       
       // 스텝에 맞춰 값 조정 (minimumValue 기준 보정)

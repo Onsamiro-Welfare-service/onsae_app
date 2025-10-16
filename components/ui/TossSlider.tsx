@@ -69,8 +69,8 @@ export function TossSlider({
       // 픽셀 위치를 값으로 변환
       const newValue = minimumValue + (newPixelPos / (trackWidth - thumbWidth)) * (maximumValue - minimumValue);
       
-      // 스텝에 맞춰 값 조정
-      const steppedValue = Math.round(newValue / step) * step;
+      // 스텝에 맞춰 값 조정 (minimumValue 기준 보정)
+      const steppedValue = minimumValue + Math.round((newValue - minimumValue) / step) * step;
       const clampedValue = Math.max(minimumValue, Math.min(maximumValue, steppedValue));
       
       setCurrentValue(clampedValue);

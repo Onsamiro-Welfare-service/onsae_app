@@ -1,5 +1,5 @@
 import { TossColors, TossRadius } from '@/constants/toss-design-system';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   StyleSheet,
@@ -33,7 +33,8 @@ export function TossProgressBar({
   trackStyle,
   fillStyle,
 }: TossProgressBarProps) {
-  const animatedProgress = new Animated.Value(0);
+  // Persist animated value across renders
+  const animatedProgress = useRef(new Animated.Value(0));
   
   // 진행률 계산 (0-1 범위로 정규화)
   const normalizedProgress = React.useMemo(() => {
@@ -45,13 +46,13 @@ export function TossProgressBar({
 
   useEffect(() => {
     if (animated) {
-      Animated.timing(animatedProgress, {
+      Animated.timing(animatedProgress.current, {
         toValue: normalizedProgress,
         duration: 800,
         useNativeDriver: false,
       }).start();
     } else {
-      animatedProgress.setValue(normalizedProgress);
+      animatedProgress.current.setValue(normalizedProgress);
     }
   }, [normalizedProgress, animated]);
 
@@ -68,7 +69,7 @@ export function TossProgressBar({
     trackStyle,
   ];
 
-  const fillStyleAnimated = animatedProgress.interpolate({
+  const fillStyleAnimated = animatedProgress.current.interpolate({
     inputRange: [0, 1],
     outputRange: ['0%', '100%'],
   });

@@ -26,7 +26,15 @@ export default function AnswerDetailScreen() {
   const router = useRouter();
   const { date, answers } = useLocalSearchParams();
   
-  const answerList: DailyAnswer[] = answers ? JSON.parse(answers as string) : [];
+  let answerList: DailyAnswer[] = [];
+  if (answers) {
+    try {
+      answerList = JSON.parse(answers as string) as DailyAnswer[];
+    } catch (err) {
+      console.warn('answer-detail: failed to parse answers param', err);
+      answerList = [];
+    }
+  }
 
   const handleBack = () => {
     router.replace('/my-answers');
@@ -57,7 +65,7 @@ export default function AnswerDetailScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" backgroundColor={TossColors.background} />
       
-      {/* 상단 헤더 */}
+      {/* ?�단 ?�더 */}
       <TossHeader
         title={date as string}
         subtitle=""

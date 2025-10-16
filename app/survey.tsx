@@ -172,7 +172,7 @@ export default function SurveyScreen() {
 
             {currentQuestion.type === 'slider' && (
               <TossSlider
-                value={answers[currentQuestion.id] || currentQuestion.minValue || 0}
+                value={answers[currentQuestion.id] ?? currentQuestion.minValue ?? 0}
                 minimumValue={currentQuestion.minValue || 0}
                 maximumValue={currentQuestion.maxValue || 100}
                 step={currentQuestion.step || 1}

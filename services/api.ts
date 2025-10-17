@@ -1,11 +1,12 @@
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const BASE_URL = Platform.select({
   // iOS simulator can use localhost
   ios: 'http://localhost:8080',
   // Android emulator needs host loopback address
-  android: 'http://10.0.2.2:8080',
+  // android: 'http://10.0.2.2:8080',
+  android: 'http://192.168.0.3:8080',
   // Web or others fallback
   default: 'http://localhost:8080',
 }) as string;
@@ -18,6 +19,7 @@ const TOKEN_STORAGE_KEY = '@auth_tokens';
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`;
+  console.log('url',url);
   // Attach Authorization header if token exists and not already provided
   const headers = new Headers(init.headers as any);
   try {

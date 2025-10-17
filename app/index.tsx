@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 60,
   },
   buttonContainer: {
-    width: '100%',
+    width: 'auto',
   },
   primaryButton: {
     width: '100%',

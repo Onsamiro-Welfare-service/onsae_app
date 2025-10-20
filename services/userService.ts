@@ -51,13 +51,16 @@ class UserService {
         loginCode,
       };
 
-      // Persist tokens for authenticated requests
+      // Persist tokens and user info atomically
       await AsyncStorage.setItem(this.TOKEN_KEY, JSON.stringify({
         accessToken: res.accessToken,
         refreshToken: res.refreshToken,
         tokenType: res.tokenType,
         expiresAt: res.expiresAt,
       }));
+
+      // Save user info and login status
+      await this.saveUserInfo(mappedUser);
 
       return {
         success: true,

@@ -30,7 +30,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (isLoggedIn === null) return;
     router.replace(isLoggedIn ? '/' : '/login');
-  }, [isLoggedIn]);
+  }, [isLoggedIn,router]);
 
   // 로딩 중일 때는 아무것도 렌더링하지 않음
   if (isLoggedIn === null) {

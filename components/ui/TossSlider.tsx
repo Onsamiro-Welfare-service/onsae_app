@@ -37,154 +37,164 @@ export function TossSlider({
   showValue = true,
   labelFormat = (value) => value.toString(),
 }: TossSliderProps) {
-  const [currentValue, setCurrentValue] = useState(value);
-  const [trackWidth, setTrackWidth] = useState(295); // layout으로 갱신
-  const thumbWidth = 32; // ?�잡???�비
-
-  // Drag start thumb position (px) captured on grant
-  const startPixelPosRef = useRef(0);
+  const [internalValue, setInternalValue] = useState(value);
+  const [trackWidth, setTrackWidth] = useState(295);
+  const thumbWidth = 32;
+  
   const isDraggingRef = useRef(false);
-  const [dragPixelPos, setDragPixelPos] = useState<number | null>(null);
-  const lastSteppedValueRef = useRef<number>(value);
+  const dragStartXRef = useRef(0);
+  const dragStartValueRef = useRef(value);
+  const pendingValueRef = useRef(value);
 
-  // ?�재 값에 ?�른 ?�잡???��???계산
-  const range = Math.max(1, maximumValue - minimumValue);
-  const normalizedValue = Math.max(0, Math.min(1, (currentValue - minimumValue) / range));
-  const thumbPosition = normalizedValue * (trackWidth - thumbWidth);
-
+  // 드래그 중이 아닐 때만 외부 value를 반영
   useEffect(() => {
-    // 드래그 중이 아닐 때만 외부 값으로 업데이트
     if (!isDraggingRef.current) {
-      setCurrentValue(value);
+      setInternalValue(value);
+      pendingValueRef.current = value;
     }
   }, [value]);
 
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !disabled,
-    onMoveShouldSetPanResponder: () => !disabled,
-    onPanResponderGrant: (evt) => {
-      if (disabled) return;
-      isDraggingRef.current = true;
-      
-      // 현재 썸 위치를 시작 위치로 설정
-      const startNormalized = Math.max(0, Math.min(1, (currentValue - minimumValue) / Math.max(1, (maximumValue - minimumValue))));
-      startPixelPosRef.current = startNormalized * (trackWidth - thumbWidth);
-      setDragPixelPos(startPixelPosRef.current);
-      onSliderStart?.();
-    },
-    onPanResponderMove: (evt, gestureState) => {
-      if (disabled || !isDraggingRef.current) return;
-      
-      // 터치 위치를 직접 사용하여 절대 위치 계산
-      const { locationX } = evt.nativeEvent;
-      const newPixelPos = Math.max(0, Math.min(trackWidth - thumbWidth, locationX - thumbWidth / 2));
-      const newValue = minimumValue + (newPixelPos / Math.max(1, (trackWidth - thumbWidth))) * (maximumValue - minimumValue);
-      
-      // 스텝에 맞춰 값 조정
-      const steppedValue = minimumValue + Math.round((newValue - minimumValue) / step) * step;
-      const clampedValue = Math.max(minimumValue, Math.min(maximumValue, steppedValue));
-      
-      // 값이 실제로 변경되었을 때만 내부 상태 업데이트 (onValueChange는 호출하지 않음)
+  // 값을 픽셀 위치로 변환
+  const getThumbPosition = (val: number): number => {
+    const range = maximumValue - minimumValue;
+    if (range <= 0) return 0;
+    const ratio = (val - minimumValue) / range;
+    return ratio * (trackWidth - thumbWidth);
+  };
 
-      console.log(clampedValue !== currentValue);
-      if (clampedValue !== currentValue) {
-        // 스텝에 맞춰 시각적 위치도 조정
-        const denom = Math.max(1, (maximumValue - minimumValue));
-        const snappedRatio = (clampedValue - minimumValue) / denom;
-        const snappedPixel = snappedRatio * (trackWidth - thumbWidth);
-        setDragPixelPos(snappedPixel);
+  // 픽셀 위치를 값으로 변환
+  const getValueFromPosition = (position: number): number => {
+    const range = maximumValue - minimumValue;
+    const availableWidth = trackWidth - thumbWidth;
+    if (availableWidth <= 0) return minimumValue;
+    
+    const ratio = position / availableWidth;
+    const rawValue = minimumValue + ratio * range;
+    
+    // 스텝 단위로 스냅
+    const snappedValue = Math.round(rawValue / step) * step;
+    
+    // 범위 제한
+    return Math.max(minimumValue, Math.min(maximumValue, snappedValue));
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !disabled,
+      onMoveShouldSetPanResponder: () => !disabled,
+      
+      onPanResponderGrant: (evt) => {
+        if (disabled) return;
         
-        setCurrentValue(clampedValue);
-        lastSteppedValueRef.current = clampedValue;
-      }
-    },
-    onPanResponderRelease: () => {
-      if (disabled) return;
+        isDraggingRef.current = true;
+        dragStartXRef.current = evt.nativeEvent.pageX;
+        dragStartValueRef.current = pendingValueRef.current;
+        
+        onSliderStart?.();
+      },
       
-      // 드래그가 끝날 때만 최종 값을 외부로 전달
-      onValueChange?.(lastSteppedValueRef.current);
+      onPanResponderMove: (evt) => {
+        if (disabled || !isDraggingRef.current) return;
+        
+        const currentX = evt.nativeEvent.pageX;
+        const deltaX = currentX - dragStartXRef.current;
+        
+        // 시작 위치에서 이동한 만큼 계산
+        const startPosition = getThumbPosition(dragStartValueRef.current);
+        const newPosition = Math.max(0, Math.min(trackWidth - thumbWidth, startPosition + deltaX));
+        
+        const newValue = getValueFromPosition(newPosition);
+        
+        if (newValue !== pendingValueRef.current) {
+          pendingValueRef.current = newValue;
+          setInternalValue(newValue);
+        }
+      },
       
-      isDraggingRef.current = false;
-      setDragPixelPos(null);
-      onSliderComplete?.();
-    },
-    onPanResponderTerminate: () => {
-      isDraggingRef.current = false;
-      setDragPixelPos(null);
-    }
-  });
+      onPanResponderRelease: () => {
+        if (disabled || !isDraggingRef.current) return;
+        
+        isDraggingRef.current = false;
+        const finalValue = pendingValueRef.current;
+        
+        onValueChange?.(finalValue);
+        onSliderComplete?.();
+      },
+      
+      onPanResponderTerminate: () => {
+        isDraggingRef.current = false;
+      },
+    })
+  ).current;
 
-  const containerStyle = [
-    styles.container,
-    style,
-  ];
-
-  const trackStyle = [
-    styles.track,
-    disabled && styles.trackDisabled,
-  ];
-
-  const visualLeft = dragPixelPos !== null ? dragPixelPos : thumbPosition;
-
-  const thumbStyle = [
-    styles.thumb,
-    {
-      left: visualLeft,
-      backgroundColor: disabled ? TossColors.textDisabled : TossColors.primary,
-    },
-  ];
-
-  const progressStyle = [
-    styles.progress,
-    {
-      width: visualLeft + thumbWidth / 2,
-    },
-  ];
-
-  const handleTrackLayout = (e: any) => {
-    const w = e?.nativeEvent?.layout?.width;
-    if (typeof w === 'number' && w > 0 && w !== trackWidth) {
-      setTrackWidth(w);
+  // 트랙 레이아웃 측정
+  const handleTrackLayout = (event: any) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0 && width !== trackWidth) {
+      setTrackWidth(width);
     }
   };
 
-  const jumpToPosition = (e: any) => {
-    if (disabled) return;
-    const x = e?.nativeEvent?.locationX ?? 0;
-    const clampedX = Math.max(0, Math.min(trackWidth - thumbWidth, x - thumbWidth / 2));
-    const newValue = minimumValue + (clampedX / Math.max(1, (trackWidth - thumbWidth))) * (maximumValue - minimumValue);
-    const steppedValue = minimumValue + Math.round((newValue - minimumValue) / step) * step;
-    const finalValue = Math.max(minimumValue, Math.min(maximumValue, steppedValue));
-    setCurrentValue(finalValue);
-    onValueChange?.(finalValue);
+  // 트랙 탭으로 이동
+  const handleTrackPress = (event: any) => {
+    if (disabled || isDraggingRef.current) return;
+    
+    const { locationX } = event.nativeEvent;
+    const targetPosition = Math.max(0, Math.min(trackWidth - thumbWidth, locationX - thumbWidth / 2));
+    const newValue = getValueFromPosition(targetPosition);
+    
+    setInternalValue(newValue);
+    pendingValueRef.current = newValue;
+    onValueChange?.(newValue);
   };
+
+  const thumbPosition = getThumbPosition(internalValue);
 
   return (
-    <View style={containerStyle}>
+    <View style={[styles.container, style]}>
       <View
         style={styles.sliderContainer}
         onLayout={handleTrackLayout}
         onStartShouldSetResponder={() => !disabled}
-        onResponderRelease={(e) => {
-          // 트랙을 탭했을 때만 점프 (드래그 중엔 무시)
-          if (!isDraggingRef.current) {
-            jumpToPosition(e);
-          }
-        }}
+        onResponderRelease={handleTrackPress}
       >
-        <View style={trackStyle} />
-        <View style={progressStyle} />
-        <View style={thumbStyle} {...panResponder.panHandlers} />
+        {/* 배경 트랙 */}
+        <View style={[styles.track, disabled && styles.trackDisabled]} />
+        
+        {/* 진행 바 */}
+        <View
+          style={[
+            styles.progress,
+            {
+              width: thumbPosition + thumbWidth / 2,
+            },
+            disabled && styles.progressDisabled,
+          ]}
+        />
+        
+        {/* Thumb */}
+        <View
+          style={[
+            styles.thumb,
+            {
+              left: thumbPosition,
+              backgroundColor: disabled ? TossColors.textDisabled : TossColors.primary,
+            },
+          ]}
+          {...panResponder.panHandlers}
+        />
       </View>
-      
+
+      {/* 현재 값 표시 */}
       {showValue && (
         <View style={styles.valueContainer}>
           <Text style={[styles.valueText, disabled && styles.disabledText]}>
-            {labelFormat(currentValue)}
+            {labelFormat(internalValue)}
           </Text>
         </View>
       )}
-      
+
+      {/* 최소/최대 라벨 */}
       {showLabels && (
         <View style={styles.labelsContainer}>
           <Text style={[styles.labelText, disabled && styles.disabledText]}>
@@ -227,11 +237,13 @@ const styles = StyleSheet.create({
     borderRadius: TossRadius.sm,
     position: 'absolute',
   },
+  progressDisabled: {
+    backgroundColor: TossColors.textDisabled,
+  },
   thumb: {
     width: 32,
     height: 32,
     borderRadius: TossRadius.lg,
-    backgroundColor: TossColors.primary,
     position: 'absolute',
     elevation: 4,
     shadowColor: TossColors.gray900,

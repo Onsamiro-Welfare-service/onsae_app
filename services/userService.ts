@@ -1,4 +1,4 @@
-import api from '@/services/api';
+import { post } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface User {
@@ -39,7 +39,7 @@ class UserService {
   static async login(loginCode: string): Promise<LoginResponse> {
     try {
       console.log('loginCode',loginCode);
-      const res = await api.post<{ loginCode: string }, BackendLoginResponse>(
+      const res = await post<{ loginCode: string }, BackendLoginResponse>(
         this.LOGIN_ENDPOINT,
         { loginCode }
       );
@@ -90,9 +90,20 @@ class UserService {
   }
 
   static async logout(): Promise<void> {
-    await AsyncStorage.removeItem(this.USER_KEY);
-    await AsyncStorage.removeItem(this.LOGIN_STATUS_KEY);
-    await AsyncStorage.removeItem(this.TOKEN_KEY);
+    try {
+      // 서버에 로그아웃 요청 (세션 무효화)
+      try {
+        await post('/api/user/logout', {});
+      } catch (error) {
+        // 서버 로그아웃 실패해도 로컬 정리는 진행
+        console.warn('서버 로그아웃 실패:', error);
+      }
+    } finally {
+      // 로컬 저장소 정리 (서버 요청 성공/실패와 관계없이 항상 실행)
+      await AsyncStorage.removeItem(this.USER_KEY);
+      await AsyncStorage.removeItem(this.LOGIN_STATUS_KEY);
+      await AsyncStorage.removeItem(this.TOKEN_KEY);
+    }
   }
 
   static async updateUserInfo(userId: string, updates: Partial<User>): Promise<User | null> {

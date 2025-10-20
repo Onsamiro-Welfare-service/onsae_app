@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -12,50 +13,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TossButton } from '@/components/ui/TossButton';
 import { TossCard } from '@/components/ui/TossCard';
+import { TossDatePicker } from '@/components/ui/TossDatePicker';
+import { TossEmojiSelector } from '@/components/ui/TossEmojiSelector';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossProgressBar } from '@/components/ui/TossProgressBar';
 import { TossSlider } from '@/components/ui/TossSlider';
 import { TossText } from '@/components/ui/TossText';
+import { TossTimePicker } from '@/components/ui/TossTimePicker';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
-import api from '@/services/api';
-
-type QuestionType =
-  | 'SINGLE_CHOICE'
-  | 'MULTIPLE_CHOICE'
-  | 'TEXT'
-  | 'SCALE'
-  | 'YES_NO'
-  | 'DATE'
-  | 'TIME';
-
-interface ChoiceOption {
-  label: string;
-  value: string;
-}
-
-interface ServerQuestion {
-  assignmentId: number;
-  questionId: number;
-  title: string;
-  content: string;
-  questionType: QuestionType;
-  categoryId: number;
-  categoryName: string;
-  options: any | null;
-  allowOtherOption: boolean;
-  otherOptionLabel: string | null;
-  otherOptionPlaceholder: string | null;
-  isRequired: boolean;
-  priority: number;
-  assignmentSource: string;
-  sourceId: number;
-  sourceName: string;
-  isCompleted: boolean;
-  responseId: number | null;
-  responseAnswer: any;
-  responseSubmittedAt: string | null;
-  assignedAt: string;
-}
+import { post } from '@/services/api';
+import SurveyService, { ChoiceOption, ServerQuestion } from '@/services/surveyService';
 
 export default function SurveyScreen() {
   const router = useRouter();
@@ -64,7 +31,18 @@ export default function SurveyScreen() {
   const [answers, setAnswers] = useState<Record<number, any>>({}); // key: assignmentId
   const [otherTexts, setOtherTexts] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [isDevToolsConnected, setIsDevToolsConnected] = useState(false);
+  
+  // 날짜 선택 모달 상태
+  const [dateModalVisible, setDateModalVisible] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [currentDateQuestionId, setCurrentDateQuestionId] = useState<number | null>(null);
+  
+  // 시간 선택 모달 상태
+  const [timeModalVisible, setTimeModalVisible] = useState(false);
+  const [selectedTime, setSelectedTime] = useState<Date>(new Date());
+  const [currentTimeQuestionId, setCurrentTimeQuestionId] = useState<number | null>(null);
 
   useEffect(() => {
     // React DevTools 연결 상태 확인
@@ -73,13 +51,13 @@ export default function SurveyScreen() {
     }
   }, []);
 
+
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const data = await api.get<ServerQuestion[]>('/api/user/questions');
-        const sorted = [...data].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
-        setQuestions(sorted);
+        const questionsData = await SurveyService.getSurveyQuestions();
+        setQuestions(questionsData);
       } catch (e) {
         console.error('설문 질문 로드 실패:', e);
       } finally {
@@ -142,11 +120,131 @@ export default function SurveyScreen() {
     }
   };
 
+  const submitAnswers = async () => {
+    try {
+      setSubmitting(true);
+      
+      // 모든 질문의 응답을 API 형식으로 변환
+      const responses = Object.entries(answers).map(([assignmentId, answer]) => {
+        const question = questions.find(q => q.assignmentId === parseInt(assignmentId));
+        if (!question) return null;
+
+        const otherText = otherTexts[parseInt(assignmentId)] || null;
+        
+        // 질문 타입에 따라 응답 형식 결정
+        let responseData;
+        
+        switch (question.questionType) {
+          case 'SINGLE_CHOICE':
+            responseData = {
+              questionId: question.questionId,
+              answer: answer === '__OTHER__' ? 'other' : answer,
+              otherText: otherText,
+              note: null
+            };
+            break;
+            
+          case 'MULTIPLE_CHOICE':
+            // 배열에서 __OTHER__를 other로 변환
+            const convertedAnswers = Array.isArray(answer) 
+              ? answer.map(a => a === '__OTHER__' ? 'other' : a)
+              : answer;
+            responseData = {
+              questionId: question.questionId,
+              answers: convertedAnswers,
+              otherText: otherText,
+              note: null
+            };
+            break;
+            
+          case 'TEXT':
+            responseData = {
+              questionId: question.questionId,
+              answer: answer,
+              note: null
+            };
+            break;
+            
+          case 'SCALE':
+            responseData = {
+              questionId: question.questionId,
+              answer: answer,
+              note: null
+            };
+            break;
+            
+          case 'YES_NO':
+            responseData = {
+              questionId: question.questionId,
+              answer: answer, // "yes" 또는 "no"
+              note: null
+            };
+            break;
+            
+          case 'DATE':
+            responseData = {
+              questionId: question.questionId,
+              answer: answer, // "2024-01-15" 형식
+              note: null
+            };
+            break;
+            
+          case 'TIME':
+            responseData = {
+              questionId: question.questionId,
+              answer: answer, // "14:30" 형식
+              note: null
+            };
+            break;
+            
+          default:
+            responseData = {
+              questionId: question.questionId,
+              answer: answer,
+              note: null
+            };
+        }
+
+        return {
+          assignmentId: parseInt(assignmentId),
+          answer: responseData
+        };
+      }).filter(response => response !== null);
+
+      console.log('제출할 응답들:', responses);
+
+      // 각 응답을 개별적으로 제출
+      for (const response of responses) {
+        console.log('제출할 응답:', response);
+        await post('/api/user/questions/responses', response);
+      }
+
+      console.log('설문 응답 제출 완료');
+      router.push('/complete');
+    } catch (error) {
+      console.error('설문 응답 제출 실패:', error);
+      
+      Alert.alert(
+        '제출 실패',
+        '설문 응답 제출에 실패했습니다. 다시 시도해주세요.',
+        [
+          {
+            text: '확인',
+            style: 'default',
+          },
+        ]
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleNext = () => {
     if (current < questions.length - 1) {
       setCurrent(prev => prev + 1);
     } else {
-      router.push('/complete');
+      // 마지막 질문에서 완료 버튼을 누르면 응답 제출
+      submitAnswers();
     }
   };
 
@@ -271,44 +369,100 @@ export default function SurveyScreen() {
       }
       case 'YES_NO': {
         const sel = answers[question.assignmentId];
+        const yesNoOptions = [
+          { emoji: '✅', label: '예', value: 'true' },
+          { emoji: '❌', label: '아니오', value: 'false' }
+        ];
+        
         return (
-          <View style={styles.yesNoRow}>
-            <TouchableOpacity
-              style={[styles.optionItem, sel === true && styles.optionItemActive]}
-              onPress={() => setAnswer(question.assignmentId, true)}
-            >
-              <TossText variant="body1" color={sel === true ? 'white' : 'textPrimary'}>예</TossText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.optionItem, sel === false && styles.optionItemActive]}
-              onPress={() => setAnswer(question.assignmentId, false)}
-            >
-              <TossText variant="body1" color={sel === false ? 'white' : 'textPrimary'}>아니오</TossText>
-            </TouchableOpacity>
-          </View>
+          <TossEmojiSelector
+            options={yesNoOptions}
+            selectedValue={sel === true ? 'true' : sel === false ? 'false' : undefined}
+            onValueChange={(value) => setAnswer(question.assignmentId, value === 'true')}
+          />
         );
       }
       case 'DATE': {
         const defaultToday = question.options?.defaultToday === true;
         const current = (answers[question.assignmentId] as string) || (defaultToday ? new Date().toISOString().slice(0, 10) : '');
+        
+        const formatDate = (dateString: string) => {
+          if (!dateString) return '날짜를 선택해주세요';
+          const date = new Date(dateString);
+          return date.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'short'
+          });
+        };
+
+        const handleDatePress = () => {
+          // 현재 선택된 날짜가 있으면 그 날짜로 설정, 없으면 오늘 날짜로 설정
+          const initialDate = current ? new Date(current) : new Date();
+          setSelectedDate(initialDate);
+          setCurrentDateQuestionId(question.assignmentId);
+          setDateModalVisible(true);
+        };
+
         return (
-          <TextInput
-            style={styles.textInput}
-            placeholder={question.content || 'YYYY-MM-DD'}
-            value={current}
-            onChangeText={(t) => setAnswer(question.assignmentId, t)}
-          />
+          <TouchableOpacity
+            style={styles.dateInput}
+            onPress={handleDatePress}
+            activeOpacity={0.7}
+          >
+            <TossText variant="body1" color={current ? 'textPrimary' : 'textTertiary'}>
+              {formatDate(current)}
+            </TossText>
+            <TossText variant="caption1" color="textTertiary" style={{ marginTop: 4 }}>
+              📅 탭하여 날짜 선택
+            </TossText>
+          </TouchableOpacity>
         );
       }
       case 'TIME': {
         const current = (answers[question.assignmentId] as string) || '';
+        
+        const formatTime = (timeString: string) => {
+          if (!timeString) return '시간을 선택해주세요';
+          
+          // HH:MM 형식의 시간을 한국어로 포맷팅
+          const [hour, minute] = timeString.split(':').map(Number);
+          const period = hour >= 12 ? '오후' : '오전';
+          const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+          
+          return `${period} ${String(displayHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        };
+
+        const handleTimePress = () => {
+          // 현재 선택된 시간이 있으면 파싱, 없으면 기본값(09:00)으로 설정
+          let initialTime = new Date();
+          initialTime.setHours(9, 0, 0, 0); // 기본값 09:00
+          
+          if (current) {
+            const [hour, minute] = current.split(':').map(Number);
+            if (!isNaN(hour) && !isNaN(minute)) {
+              initialTime.setHours(hour, minute, 0, 0);
+            }
+          }
+          setSelectedTime(initialTime);
+          setCurrentTimeQuestionId(question.assignmentId);
+          setTimeModalVisible(true);
+        };
+
         return (
-          <TextInput
-            style={styles.textInput}
-            placeholder={question.content || 'HH:mm'}
-            value={current}
-            onChangeText={(t) => setAnswer(question.assignmentId, t)}
-          />
+          <TouchableOpacity
+            style={styles.timeInput}
+            onPress={handleTimePress}
+            activeOpacity={0.7}
+          >
+            <TossText variant="body1" color={current ? 'textPrimary' : 'textTertiary'}>
+              {formatTime(current)}
+            </TossText>
+            <TossText variant="caption1" color="textTertiary" style={{ marginTop: 4 }}>
+              🕐 탭하여 시간 선택
+            </TossText>
+          </TouchableOpacity>
         );
       }
       default:
@@ -365,14 +519,44 @@ export default function SurveyScreen() {
 
       <View style={styles.buttonContainer}>
         <TossButton
-          title={current === questions.length - 1 ? '완료' : '다음'}
+          title={current === questions.length - 1 ? (submitting ? '제출 중...' : '완료') : '다음'}
           onPress={handleNext}
           variant="primary"
           size="medium"
-          disabled={!isAnswered(q)}
+          disabled={!isAnswered(q) || submitting}
+          loading={submitting}
           style={styles.menuButton}
         />
       </View>
+      
+      {/* 날짜 선택 모달 */}
+      <TossDatePicker
+        visible={dateModalVisible}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        onClose={() => setDateModalVisible(false)}
+        onConfirm={() => {
+          if (currentDateQuestionId !== null) {
+            setAnswer(currentDateQuestionId, selectedDate.toISOString().slice(0, 10));
+          }
+          setDateModalVisible(false);
+        }}
+      />
+      
+      {/* 시간 선택 모달 */}
+      <TossTimePicker
+        visible={timeModalVisible}
+        selectedTime={selectedTime}
+        onTimeChange={setSelectedTime}
+        onClose={() => setTimeModalVisible(false)}
+        onConfirm={(time) => {
+          if (currentTimeQuestionId !== null) {
+            const timeString = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
+            setAnswer(currentTimeQuestionId, timeString);
+          }
+          setTimeModalVisible(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -438,12 +622,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: TossColors.gray200,
   },
-  yesNoRow: {
-    flexDirection: 'row',
-    gap: 12,
+  dateInput: {
+    paddingVertical: TossSpacing.lg,
+    paddingHorizontal: TossSpacing.lg,
+    backgroundColor: TossColors.gray50,
+    borderRadius: TossSpacing.md,
+    borderWidth: 1,
+    borderColor: TossColors.gray200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeInput: {
+    paddingVertical: TossSpacing.lg,
+    paddingHorizontal: TossSpacing.lg,
+    backgroundColor: TossColors.gray50,
+    borderRadius: TossSpacing.md,
+    borderWidth: 1,
+    borderColor: TossColors.gray200,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   card: {
-    marginHorizontal: TossSpacing.lg,
     marginBottom: TossSpacing.lg,
   },
   buttonContainer: {

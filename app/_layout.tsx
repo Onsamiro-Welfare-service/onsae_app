@@ -50,6 +50,7 @@ export default function RootLayout() {
         <Stack.Screen name="inquiry-complete" options={{ headerShown: false }} />
         <Stack.Screen name="my-answers" options={{ headerShown: false }} />
         <Stack.Screen name="answer-detail" options={{ headerShown: false }} />
+        <Stack.Screen name="alarm" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>

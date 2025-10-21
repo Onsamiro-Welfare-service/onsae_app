@@ -13,7 +13,7 @@ interface TossButtonProps {
   title: string;
   onPress?: () => void;
   variant?: 'primary' | 'secondary' | 'outline';
-  size?: 'small' | 'medium' | 'large';
+  size?: 'xsmall' | 'small' | 'medium' | 'large';
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
@@ -67,6 +67,11 @@ const styles = StyleSheet.create({
   },
   
   // 크기별 스타일
+  xsmall: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minHeight: 24,
+  },
   small: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -87,6 +92,9 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: TossTypography.body1.fontFamily,
     fontWeight: TossTypography.body1.fontWeight,
+  },
+  xsmallText: {
+    fontSize: 12,
   },
   smallText: {
     fontSize: 14,

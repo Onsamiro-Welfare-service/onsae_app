@@ -76,6 +76,12 @@ export default function HomeScreen() {
       description: '과거에 내가 답했던 답변을 확인해 보세요',
       onPress: () => router.push('/my-answers'),
     },
+    {
+      icon: '🔔',
+      title: '알람',
+      description: '알람을 설정해보세요',
+      onPress: () => router.push('/alarm'),
+    },
   ];
 
   return (

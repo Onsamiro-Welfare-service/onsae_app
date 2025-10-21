@@ -104,7 +104,13 @@ export default function SurveyScreen() {
         }
         return true;
       case 'MULTIPLE_CHOICE':
-        return Array.isArray(a) && a.length > 0;
+        if (!Array.isArray(a) || a.length === 0) return false;
+        // 기타 옵션이 선택되어 있으면 텍스트도 확인
+        if (a.includes('__OTHER__')) {
+          const t = otherTexts[question.assignmentId];
+          return !!t && t.trim().length > 0;
+        }
+        return true;
       case 'TEXT':
         return typeof a === 'string' && a.trim().length > 0;
       case 'SCALE':
@@ -290,20 +296,30 @@ export default function SurveyScreen() {
             <View style={styles.otherContainer} key={`${assignmentId}-other-container`}>
               <TouchableOpacity
                 key={`${assignmentId}-other-button`}
-                style={[styles.optionItem, selected === '__OTHER__' && styles.optionItemActive]}
+                style={[styles.optionItem, (multiple 
+                  ? (Array.isArray(selected) && selected.includes('__OTHER__'))
+                  : (selected === '__OTHER__')) && styles.optionItemActive]}
                 onPress={() => {
                   try {
-                    setAnswer(assignmentId, '__OTHER__');
+                    if (multiple) {
+                      toggleMulti(assignmentId, '__OTHER__');
+                    } else {
+                      setAnswer(assignmentId, '__OTHER__');
+                    }
                   } catch (error) {
                     console.error('Other option selection error:', error);
                   }
                 }}
               >
-                <TossText variant="body1" color={selected === '__OTHER__' ? 'white' : 'textPrimary'}>
+                <TossText variant="body1" color={multiple 
+                  ? (Array.isArray(selected) && selected.includes('__OTHER__') ? 'white' : 'textPrimary')
+                  : (selected === '__OTHER__' ? 'white' : 'textPrimary')}>
                   {question.otherOptionLabel || '기타'}
                 </TossText>
               </TouchableOpacity>
-              {selected === '__OTHER__' && (
+              {(multiple 
+                ? (Array.isArray(selected) && selected.includes('__OTHER__'))
+                : (selected === '__OTHER__')) && (
                 <TextInput
                   key={`${assignmentId}-other-input`}
                   style={styles.textInput}

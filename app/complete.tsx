@@ -23,7 +23,7 @@ export default function CompleteScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" backgroundColor={TossColors.background} />
+      <StatusBar style="dark"/>
       
       <View style={styles.content}>
         {/* 축하 이모지 */}

@@ -1,0 +1,123 @@
+# 토스 디자인 시스템 기반 개발 규칙 (Toss Design System)
+
+## 디자인 시스템 사용 원칙
+이 프로젝트는 토스 스타일의 디자인 시스템을 사용합니다. 모든 UI 컴포넌트는 다음 규칙을 따르세요.
+
+## 필수 컴포넌트 사용
+
+### 항상 사용해야 하는 토스 컴포넌트들:
+
+#### 1. TossButton - 버튼 컴포넌트
+```typescript
+import { TossButton } from '@/components/ui/TossButton';
+
+// 사용 예시:
+<TossButton
+  title="버튼 텍스트"
+  onPress={() => {}}
+  variant="primary" // 'primary' | 'secondary' | 'outline'
+  size="medium" // 'small' | 'medium' | 'large'
+  disabled={false}
+  loading={false}
+/>
+```
+- 기본 버튼은 react-native의 TouchableOpacity 대신 TossButton 사용
+- 로디링 상태가 필요한 경우 loading prop 활용
+
+#### 2. TossHeader - 헤더 컴포넌트
+```typescript
+import { TossHeader } from '@/components/ui/TossHeader';
+
+// 사용 예시:
+<TossHeader
+  title="페이지 제목"
+  subtitle="부제목"
+  leftIcon="🏠"
+  rightIcon="🔔"
+  onLeftPress={() => {}}
+  onRightPress={() => {}}
+  showBackButton={true}
+  onBackPress={() => {}}
+  badge={3}
+/>
+```
+- 모든 화면 상단에는 TossHeader 사용 필수
+- 네비게이션이나 액션이 필요한 경우 적절한 아이콘과 콜백 제공
+
+#### 3. TossCard - 카드 컨테이너
+```typescript
+import { TossCard } from '@/components/ui/TossCard';
+
+// 사용 예시:
+<TossCard style={{}} onPress={() => {}} padding="lg">
+  {/* 내용 */}
+</TossCard>
+```
+- 콘텐츠 레이아웃의 기본 단위는 TossCard 사용
+- View 대신 TossCard 우선 사용
+
+#### 4. TossText - 텍스트 컴포넌트
+```typescript
+import { TossText } from '@/components/ui/TossText';
+
+// 사용 예시:
+<TossText 
+  variant="title1" // 'title1' | 'title2' | 'title3' | 'body1' | 'body2' | 'caption1' | 'caption2' | 'caption3'
+  color="textPrimary" // 'textPrimary' | 'textSecondary' | 'textTertiary' | 'textDisabled'
+>
+  텍스트 내용
+</TossText>
+```
+- 모든 텍스트는 React Native의 Text 대신 TossText 사용
+- 적절한 variant와 color 조합 사용
+
+#### 5. TossProgressBar - 진행률 표시
+```typescript
+import { TossProgressBar } from '@/components/ui/TossProgressBar';
+
+// 사용 예시:
+<TossProgressBar
+  progress={75}
+  variant="primary" // 'default' | 'success' | 'warning' | 'primary'
+  size="large" // 'small' | 'medium' | 'large'
+  animated={true}
+  showLabels={true}
+/>
+```
+
+#### 6. TossSlider - 슬라이더 컴포넌트
+```typescript
+import { TossSlider } from '@/components/ui/TossSlider';
+
+// 사용 예시:
+<TossSlider
+  value={50}
+  minimumValue={0}
+  maximumValue={100}
+  onValueChange={(value) => {}}
+  step={1}
+  disabled={false}
+  labelFormat={(value) => `${value}점`}
+/>
+```
+
+#### 7. TossEmojiSelector - 이모지 선택기
+```typescript
+import { TossEmojiSelector } from '@/components/ui/TossEmojiSelector';
+
+// 사용 예시:
+<TossEmojiSelector
+  options={[
+    { emoji: '😢', label: '안좋음', value: 'sad' },
+    { emoji: '😐', label: '보통', value: 'neutral' },
+    { emoji: '😊', label: '좋음', value: 'happy' }
+  ]}
+  selectedValue="neutral"
+  onValueChange={(value) => {}}
+/>
+```
+
+## 디자인 토큰 사용
+
+### 색상 사용 규칙
+```

@@ -18,6 +18,7 @@ import { TossCard } from '@/components/ui/TossCard';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossText } from '@/components/ui/TossText';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
+import SurveyService from '@/services/surveyService';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -31,8 +32,8 @@ export default function HomeScreen() {
 
   const checkSurveyStatus = async () => {
     try {
-      // const completed = await SurveyService.isTodaySurveyCompleted();
-      const completed = false;
+      const completed = await SurveyService.isTodaySurveyCompleted();
+      // const completed = false;
       setIsSurveyCompleted(completed);
     } catch (error) {
       console.error('문진 상태 확인 실패:', error);
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
     fontSize: 60,
   },
   buttonContainer: {
-    width: '100%',
+    width: 'auto',
   },
   primaryButton: {
     width: '100%',

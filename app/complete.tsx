@@ -10,7 +10,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Import our Toss components
 import { TossButton } from '@/components/ui/TossButton';
-import { TossCard } from '@/components/ui/TossCard';
 import { TossText } from '@/components/ui/TossText';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
 
@@ -23,7 +22,7 @@ export default function CompleteScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" backgroundColor={TossColors.background} />
+      <StatusBar style="dark"/>
       
       <View style={styles.content}>
         {/* 축하 이모지 */}
@@ -42,7 +41,7 @@ export default function CompleteScreen() {
         </TossText>
 
         {/* 리워드 카드 */}
-        <TossCard style={styles.rewardCard}>
+        {/* <TossCard style={styles.rewardCard}>
           <View style={styles.rewardContent}>
             <TossText variant="title3" color="textPrimary" style={styles.rewardTitle}>
               🪙 +10 코인 획득!
@@ -51,7 +50,7 @@ export default function CompleteScreen() {
               방 꾸미기에 사용할 수 있어요
             </TossText>
           </View>
-        </TossCard>
+        </TossCard> */}
 
         {/* 홈으로 돌아가기 버튼 */}
         <View style={styles.buttonContainer}>

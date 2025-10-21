@@ -109,13 +109,6 @@ export default function LoginScreen() {
         <TossText variant="caption2" color="textTertiary" style={styles.helpText}>
           로그인 코드가 필요하시면 복지관에 문의해주세요
         </TossText>
-
-        {/* 테스트용 더미 코드 안내 */}
-        <View style={styles.testInfo}>
-          <TossText variant="caption3" color="textTertiary" style={styles.testText}>
-            테스트 코드: 1234, 5678, 9999
-          </TossText>
-        </View>
       </View>
     </SafeAreaView>
   );
@@ -152,8 +145,7 @@ const styles = StyleSheet.create({
   },
   loginCard: {
     width: '100%',
-    paddingVertical: TossSpacing.xl,
-    paddingHorizontal: TossSpacing.lg,
+    paddingVertical: TossSpacing.md,
     marginBottom: TossSpacing.lg,
   },
   inputContainer: {

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "my-app",
-    "slug": "my-app",
+    "name": "온새",
+    "slug": "onsae-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "onsaeapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

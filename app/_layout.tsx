@@ -1,5 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import 'react-native-reanimated';
@@ -10,6 +10,7 @@ import UserService from '@/services/userService';
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     checkLoginStatus();
@@ -17,13 +18,19 @@ export default function RootLayout() {
 
   const checkLoginStatus = async () => {
     try {
-      const user = await UserService.getCurrentUser();
-      setIsLoggedIn(!!user);
+      const loggedIn = await UserService.isLoggedIn();
+      setIsLoggedIn(loggedIn);
     } catch (error) {
       console.error('Login status check error:', error);
       setIsLoggedIn(false);
     }
   };
+
+  // Redirect based on login status
+  useEffect(() => {
+    if (isLoggedIn === null) return;
+    router.replace(isLoggedIn ? '/' : '/login');
+  }, [isLoggedIn,router]);
 
   // 로딩 중일 때는 아무것도 렌더링하지 않음
   if (isLoggedIn === null) {

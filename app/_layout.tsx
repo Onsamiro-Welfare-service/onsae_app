@@ -43,6 +43,7 @@ export default function RootLayout() {
         initialRouteName={isLoggedIn ? 'index' : 'login'}
       >
         <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="survey" options={{ headerShown: false }} />
         <Stack.Screen name="complete" options={{ headerShown: false }} />

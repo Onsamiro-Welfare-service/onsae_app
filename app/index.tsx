@@ -62,7 +62,8 @@ export default function HomeScreen() {
       icon: '🏃‍♂️',
       title: '문의 하기',
       description: '언제든 빠르게 복지관에 문의해보세요',
-      onPress: () => router.push('/inquiry'),
+      onPress: () => {},
+      disabled: true,
     },
     // {
     //   icon: '💚',
@@ -123,26 +124,38 @@ export default function HomeScreen() {
         </TossCard>
 
         {/* 기능 카드들 */}
-        {functionalCards.map((card, index) => (
-          <TossCard 
-            key={index}
-            style={styles.functionalCard}
-            onPress={card.onPress}
-          >
-            <View style={styles.cardContent}>
-              <Text style={styles.cardIcon}>{card.icon}</Text>
-              <View style={styles.cardTextContainer}>
-                <TossText variant="body1" color="textPrimary" style={styles.cardTitle}>
-                  {card.title}
-                </TossText>
-                <TossText variant="caption2" color="textSecondary" style={styles.cardDescription}>
-                  {card.description}
-                </TossText>
+        {functionalCards.map((card, index) => {
+          const cardStyles = card.disabled 
+            ? [styles.functionalCard, styles.disabledCard] as any
+            : styles.functionalCard;
+          const iconStyles = card.disabled 
+            ? [styles.cardIcon, styles.disabledText] as any
+            : styles.cardIcon;
+          const titleStyles = card.disabled 
+            ? [styles.cardTitle, styles.disabledText] as any
+            : styles.cardTitle;
+          
+          return (
+            <TossCard 
+              key={index}
+              style={cardStyles}
+              onPress={card.disabled ? undefined : card.onPress}
+            >
+              <View style={styles.cardContent}>
+                <Text style={iconStyles}>{card.icon}</Text>
+                <View style={styles.cardTextContainer}>
+                  <TossText variant="body1" color="textPrimary" style={titleStyles}>
+                    {card.title}
+                  </TossText>
+                  <TossText variant="caption2" color="textSecondary" style={styles.cardDescription}>
+                    {card.description}
+                  </TossText>
+                </View>
+                <Text style={styles.arrowIcon}>›</Text>
               </View>
-              <Text style={styles.arrowIcon}>›</Text>
-            </View>
-          </TossCard>
-        ))}
+            </TossCard>
+          );
+        })}
 
         <View style={styles.bottomSpacing} />
         
@@ -232,5 +245,11 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     textAlign: 'right',
+  },
+  disabledCard: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    opacity: 0.5,
   },
 });

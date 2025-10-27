@@ -39,7 +39,7 @@ export function TossHeader({
       <View style={styles.leftSection}>
         {showBackButton ? (
           <TouchableOpacity onPress={onBackPress} style={styles.backButton}>
-            {/* 이모지 아이콘 사용 */}
+            {/* Back icon */}
             <TossText style={styles.backIcon}>←</TossText>
           </TouchableOpacity>
         ) : leftIcon ? (
@@ -160,3 +160,4 @@ const styles = StyleSheet.create({
     height: 32,
   },
 });
+

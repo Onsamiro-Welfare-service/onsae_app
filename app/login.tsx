@@ -1,11 +1,13 @@
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,6 +26,7 @@ export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const passwordInputRef = useRef<TextInput>(null);
 
   const handleLogin = async () => {
     if (!username.trim()) {
@@ -57,11 +60,16 @@ export default function LoginScreen() {
 
   const canLogin = username.trim().length > 0 && password.trim().length > 0 && !isLoading;
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" backgroundColor={TossColors.background} />
       
-      <View style={styles.content}>
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
+        <View style={styles.content}>
         {/* 로고/이모지 */}
         <View style={styles.logoContainer}>
           <Text style={styles.logoEmoji}>🏠</Text>
@@ -93,6 +101,8 @@ export default function LoginScreen() {
               autoFocus={true}
               editable={!isLoading}
               autoCapitalize="none"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordInputRef.current?.focus()}
             />
           </View>
 
@@ -101,6 +111,7 @@ export default function LoginScreen() {
               비밀번호
             </TossText>
             <TextInput
+              ref={passwordInputRef}
               style={styles.textInput}
               placeholder="비밀번호를 입력하세요"
               placeholderTextColor={TossColors.textTertiary}
@@ -110,6 +121,8 @@ export default function LoginScreen() {
               maxLength={50}
               editable={!isLoading}
               autoCapitalize="none"
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
             />
           </View>
 
@@ -141,6 +154,7 @@ export default function LoginScreen() {
           />
         </View>
       </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }

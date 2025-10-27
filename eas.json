@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 4.0.0"
+  },
+  "build": {
+    "preview": {
+      "developmentClient": false,
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease",
+        "image": "latest",
+        "env": {
+          "EXPO_NO_DOTENV": "1"
+        }
+      }
+    },
+    "production": {
+      "developmentClient": false,
+      "android": {
+        "buildType": "app-bundle",
+        "image": "latest",
+        "env": {
+          "EXPO_NO_DOTENV": "1"
+        }
+      },
+      "env": {
+        "EXPO_OPTIMIZED": "true"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "internal"
+      }
+    }
+  }
+}

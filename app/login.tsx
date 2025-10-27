@@ -21,19 +21,24 @@ import UserService from '@/services/userService';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [loginCode, setLoginCode] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!loginCode.trim()) {
-      Alert.alert('알림', '로그인 코드를 입력해주세요.');
+    if (!username.trim()) {
+      Alert.alert('알림', '아이디를 입력해주세요.');
+      return;
+    }
+    if (!password.trim()) {
+      Alert.alert('알림', '비밀번호를 입력해주세요.');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const result = await UserService.login(loginCode.trim());
+      const result = await UserService.login(username.trim(), password.trim());
       
       if (result.success && result.user) {
         // 사용자 정보 저장
@@ -50,7 +55,7 @@ export default function LoginScreen() {
     }
   };
 
-  const canLogin = loginCode.trim().length > 0 && !isLoading;
+  const canLogin = username.trim().length > 0 && password.trim().length > 0 && !isLoading;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -69,25 +74,42 @@ export default function LoginScreen() {
 
         {/* 부제목 */}
         <TossText variant="body2" color="textSecondary" style={styles.subtitle}>
-          로그인 코드를 입력해주세요
+          아이디와 비밀번호를 입력해주세요
         </TossText>
 
         {/* 로그인 카드 */}
         <TossCard style={styles.loginCard}>
           <View style={styles.inputContainer}>
             <TossText variant="body1" color="textPrimary" style={styles.inputLabel}>
-              로그인 코드
+              아이디
             </TossText>
             <TextInput
               style={styles.textInput}
-              placeholder="코드를 입력하세요"
+              placeholder="아이디를 입력하세요"
               placeholderTextColor={TossColors.textTertiary}
-              value={loginCode}
-              onChangeText={setLoginCode}
-              secureTextEntry={true}
-              maxLength={10}
+              value={username}
+              onChangeText={setUsername}
+              maxLength={50}
               autoFocus={true}
               editable={!isLoading}
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <TossText variant="body1" color="textPrimary" style={styles.inputLabel}>
+              비밀번호
+            </TossText>
+            <TextInput
+              style={styles.textInput}
+              placeholder="비밀번호를 입력하세요"
+              placeholderTextColor={TossColors.textTertiary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={true}
+              maxLength={50}
+              editable={!isLoading}
+              autoCapitalize="none"
             />
           </View>
 
@@ -105,10 +127,19 @@ export default function LoginScreen() {
           </View>
         </TossCard>
 
-        {/* 도움말 */}
-        <TossText variant="caption2" color="textTertiary" style={styles.helpText}>
-          로그인 코드가 필요하시면 복지관에 문의해주세요
-        </TossText>
+          {/* 도움말 및 회원가입 버튼 */}
+        <View style={styles.footerContainer}>
+          <TossText variant="caption2" color="textTertiary" style={styles.helpText}>
+            계정이 없으신가요?
+          </TossText>
+          <TossButton
+            title="회원가입"
+            onPress={() => router.push('/signup')}
+            variant="outline"
+            size="medium"
+            style={styles.signupButton}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -173,19 +204,18 @@ const styles = StyleSheet.create({
   loginButton: {
     width: '100%',
   },
+  footerContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: TossSpacing.lg,
+  },
   helpText: {
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: TossSpacing.md,
   },
-  testInfo: {
-    backgroundColor: TossColors.gray100,
-    paddingVertical: TossSpacing.sm,
-    paddingHorizontal: TossSpacing.md,
-    borderRadius: TossSpacing.sm,
-  },
-  testText: {
-    textAlign: 'center',
-    fontSize: 12,
+  signupButton: {
+    width: '100%',
+    maxWidth: 300,
   },
 }); 

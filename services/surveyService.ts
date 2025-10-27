@@ -98,6 +98,17 @@ class SurveyService {
     }
   }
 
+  // 완료된 질문 목록 가져오기
+  static async getCompletedQuestions(): Promise<ServerQuestion[]> {
+    try {
+      const data = await get<ServerQuestion[]>('/api/user/questions/completed');
+      return data;
+    } catch (error) {
+      console.error('완료된 질문 로드 실패:', error);
+      throw error;
+    }
+  }
+
 }
 
 export default SurveyService; 

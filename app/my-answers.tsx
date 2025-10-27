@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,32 +11,28 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Import our Toss components
 import { TossCard } from '@/components/ui/TossCard';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossText } from '@/components/ui/TossText';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
-
-// Import survey service
-import SurveyService from '@/services/surveyService';
-
-interface DailyAnswer {
-  id: string;
-  date: string;
-  question: string;
-  answer: string;
-  type: 'emoji' | 'slider' | 'yesno' | 'image';
-}
+import SurveyService, { ServerQuestion } from '@/services/surveyService';
 
 interface AnswerGroup {
   date: string;
-  answers: DailyAnswer[];
+  questions: ServerQuestion[];
 }
 
 export default function MyAnswersScreen() {
   const router = useRouter();
   const [answerGroups, setAnswerGroups] = useState<AnswerGroup[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const blurActiveElement = () => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const el = (document.activeElement as any);
+      if (el && typeof el.blur === 'function') el.blur();
+    }
+  };
 
   useEffect(() => {
     loadAnswerGroups();
@@ -44,26 +41,39 @@ export default function MyAnswersScreen() {
   const loadAnswerGroups = async () => {
     try {
       setLoading(true);
-      const groups = await SurveyService.getAnswerGroups();
+      const questions = await SurveyService.getCompletedQuestions();
+      const groupedByDate = questions.reduce((acc, question) => {
+        if (!question.responseSubmittedAt) return acc;
+        const date = question.responseSubmittedAt.split('T')[0];
+        if (!acc[date]) acc[date] = [] as ServerQuestion[];
+        acc[date].push(question);
+        return acc;
+      }, {} as Record<string, ServerQuestion[]>);
+
+      const groups = Object.entries(groupedByDate)
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([date, questions]) => ({ date, questions }));
+
       setAnswerGroups(groups);
     } catch (error) {
-      console.error('답변 그룹 로드 실패:', error);
+      console.error('Failed to load answer groups:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleBack = () => {
+    blurActiveElement();
     router.back();
   };
 
   const handleDatePress = (answerGroup: AnswerGroup) => {
-    // 모달로 상세 답변 보기
+    blurActiveElement();
     router.push({
       pathname: '/answer-detail',
       params: { 
         date: answerGroup.date,
-        answers: JSON.stringify(answerGroup.answers)
+        questions: JSON.stringify(answerGroup.questions)
       }
     });
   };
@@ -73,13 +83,11 @@ export default function MyAnswersScreen() {
       <TossCard style={styles.dateCard}>
         <View style={styles.dateContainer}>
           <TossText variant="title3" color="textPrimary" style={styles.dateText}>
-              {item.date}
+            {item.date}
           </TossText>
-          <View style={styles.dateHeader}>
-            <TossText variant="caption2" color="textTertiary" style={styles.answerCount}>
-              {item.answers.length}개 답변
-            </TossText>
-          </View>
+          <TossText variant="caption2" color="textTertiary" style={styles.answerCount}>
+            {item.questions.length}개 답변
+          </TossText>
           <Text style={styles.arrow}>›</Text>
         </View>
       </TossCard>
@@ -120,8 +128,6 @@ export default function MyAnswersScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" backgroundColor={TossColors.background} />
-      
-      {/* 상단 헤더 */}
       <TossHeader
         title="내 답변"
         subtitle=""
@@ -164,15 +170,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  dateHeader: { 
-    paddingHorizontal: TossSpacing.md,
-  },
   dateText: {
     flex: 1,
     fontWeight: '600',
   },
   answerCount: {
     fontSize: 12,
+    paddingHorizontal: TossSpacing.md,
   },
   previewContainer: {
     marginBottom: TossSpacing.sm,

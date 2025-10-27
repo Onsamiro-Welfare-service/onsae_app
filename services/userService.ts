@@ -8,6 +8,25 @@ export interface User {
   loginCode: string;
 }
 
+export interface SignupRequest {
+  institutionId: number;
+  username: string;
+  password: string;
+  name: string;
+  phone: string;
+  birthDate: string;
+}
+
+export interface SignupResponse {
+  success: boolean;
+  message?: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
 export interface LoginResponse {
   success: boolean;
   user?: User;
@@ -34,21 +53,38 @@ class UserService {
   private static readonly USER_KEY = '@user_info';
   private static readonly LOGIN_STATUS_KEY = '@login_status';
   private static readonly LOGIN_ENDPOINT = '/api/user/login';
+  private static readonly SIGNUP_ENDPOINT = '/api/user/signup';
   private static readonly TOKEN_KEY = '@auth_tokens';
 
-  static async login(loginCode: string): Promise<LoginResponse> {
+  // 회원가입
+  static async signup(data: SignupRequest): Promise<SignupResponse> {
     try {
-      console.log('loginCode',loginCode);
-      const res = await post<{ loginCode: string }, BackendLoginResponse>(
+      await post<SignupRequest, any>(this.SIGNUP_ENDPOINT, data);
+      return {
+        success: true,
+        message: '회원가입이 완료되었습니다.',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error?.message || '회원가입에 실패했습니다.',
+      };
+    }
+  }
+
+  static async login(username: string, password: string): Promise<LoginResponse> {
+    try {
+      console.log('username', username);
+      const res = await post<LoginRequest, BackendLoginResponse>(
         this.LOGIN_ENDPOINT,
-        { loginCode }
+        { username, password }
       );
-      console.log('res',res);
+      console.log('res', res);
       const mappedUser: User = {
         id: String(res.user.id),
         name: res.user.name,
         center: res.user.institutionName,
-        loginCode,
+        loginCode: username,
       };
 
       // Persist tokens and user info atomically

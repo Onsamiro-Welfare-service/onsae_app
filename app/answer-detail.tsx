@@ -2,10 +2,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   View,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,7 +38,8 @@ export default function AnswerDetailScreen() {
 
   const handleBack = () => {
     blurActiveElement();
-    router.replace('/my-answers');
+    // router.replace('/my-answers');
+    router.back();
   };
 
   // 응답 내용을 표시하기 위한 유틸리티 함수
@@ -108,10 +109,8 @@ export default function AnswerDetailScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" backgroundColor={TossColors.background} />
       
-      {/* 상단 헤더 */}
       <TossHeader
         title={date as string}
-        subtitle=""
         showBackButton={true}
         onBackPress={handleBack}
       />

@@ -112,7 +112,6 @@ export default function MyAnswersScreen() {
         <StatusBar style="dark" backgroundColor={TossColors.background} />
         <TossHeader
           title="내 답변"
-          subtitle=""
           showBackButton={true}
           onBackPress={handleBack}
         />
@@ -130,7 +129,6 @@ export default function MyAnswersScreen() {
       <StatusBar style="dark" backgroundColor={TossColors.background} />
       <TossHeader
         title="내 답변"
-        subtitle=""
         showBackButton={true}
         onBackPress={handleBack}
       />

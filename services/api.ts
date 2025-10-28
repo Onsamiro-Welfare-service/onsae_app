@@ -2,15 +2,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 
-const BASE_URL = Platform.select({
-  // iOS simulator can use localhost
-  ios: 'http://localhost:8080',
-  // Android emulator needs host loopback address
-  // android: 'http://10.0.2.2:8080',
-  android: 'http://192.168.0.3:8080',
-  // Web or others fallback
-  default: 'http://localhost:8080',
-}) as string;
+// 환경 변수에서 API URL 가져오기 (없으면 기본값 사용)
+const getBaseUrl = () => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) return envUrl;
+
+  // 기본값 (개발 환경)
+  return Platform.select({
+    ios: 'http://localhost:8080',
+    android: 'http://192.168.0.3:8080',
+    default: 'http://localhost:8080',
+  }) as string;
+};
+
+const BASE_URL = getBaseUrl();
 
 export interface ApiOptions {
   headers?: Record<string, string>;

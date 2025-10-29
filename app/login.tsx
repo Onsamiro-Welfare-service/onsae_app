@@ -3,12 +3,12 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   Keyboard,
   StyleSheet,
-  Text,
   TextInput,
   TouchableWithoutFeedback,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -72,13 +72,14 @@ export default function LoginScreen() {
         <View style={styles.content}>
         {/* 로고/이모지 */}
         <View style={styles.logoContainer}>
-          <Text style={styles.logoEmoji}>🏠</Text>
+          <Image source={require('@/assets/images/icon.png')} style={styles.logoImage} />
+          {/* <Text style={styles.logoEmoji}>🏠</Text> */}
         </View>
 
         {/* 제목 */}
-        <TossText variant="title1" color="textPrimary" style={styles.title}>
+        {/* <TossText variant="title1" color="textPrimary" style={styles.title}>
           온새미로
-        </TossText>
+        </TossText> */}
 
         {/* 부제목 */}
         <TossText variant="body2" color="textSecondary" style={styles.subtitle}>
@@ -168,7 +169,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: TossSpacing.lg,
   },
   logoContainer: {
-    marginBottom: TossSpacing.xl,
+    // marginBottom: TossSpacing.sm,
+  },
+  logoImage: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
   },
   logoEmoji: {
     fontSize: 80,

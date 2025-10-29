@@ -77,7 +77,7 @@ export default function LoginScreen() {
 
         {/* 제목 */}
         <TossText variant="title1" color="textPrimary" style={styles.title}>
-          안전한 하루
+          온새미로
         </TossText>
 
         {/* 부제목 */}

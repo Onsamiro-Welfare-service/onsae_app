@@ -2,20 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 
-// 환경 변수에서 API URL 가져오기 (없으면 기본값 사용)
-const getBaseUrl = () => {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl) return envUrl;
+import { API_BASE_URL } from '@/constants/config';
 
-  // 기본값 (개발 환경)
-  return Platform.select({
-    ios: 'http://localhost:8080',
-    android: 'http://192.168.0.3:8080',
-    default: 'http://localhost:8080',
-  }) as string;
-};
-
-const BASE_URL = getBaseUrl();
+const BASE_URL = Platform.select({
+  ios: API_BASE_URL,
+  android: API_BASE_URL,
+  default: API_BASE_URL,
+}) as string;
 
 export interface ApiOptions {
   headers?: Record<string, string>;

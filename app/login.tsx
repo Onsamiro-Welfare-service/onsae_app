@@ -88,9 +88,9 @@ export default function LoginScreen() {
         {/* 로그인 카드 */}
         <TossCard style={styles.loginCard}>
           <View style={styles.inputContainer}>
-            <TossText variant="body1" color="textPrimary" style={styles.inputLabel}>
+            {/* <TossText variant="body1" color="textPrimary" style={styles.inputLabel}>
               아이디
-            </TossText>
+            </TossText> */}
             <TextInput
               style={styles.textInput}
               placeholder="아이디를 입력하세요"
@@ -107,9 +107,6 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <TossText variant="body1" color="textPrimary" style={styles.inputLabel}>
-              비밀번호
-            </TossText>
             <TextInput
               ref={passwordInputRef}
               style={styles.textInput}
@@ -194,7 +191,7 @@ const styles = StyleSheet.create({
     marginBottom: TossSpacing.lg,
   },
   inputContainer: {
-    marginBottom: TossSpacing.xl,
+    marginBottom: TossSpacing.md,
   },
   inputLabel: {
     marginBottom: TossSpacing.md,

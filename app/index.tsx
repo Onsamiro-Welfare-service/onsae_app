@@ -91,7 +91,7 @@ export default function HomeScreen() {
       
       {/* 상단 헤더 */}
       <TossHeader
-        title="안전한 하루"
+        title="온새미로"
         showBackButton={false}
         onBackPress={handleBack}
       />

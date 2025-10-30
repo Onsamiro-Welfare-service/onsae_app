@@ -15,11 +15,12 @@ import { TossCard } from '@/components/ui/TossCard';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossText } from '@/components/ui/TossText';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
-import SurveyService, { ServerQuestion } from '@/services/surveyService';
+import SurveyService, { UserResponse } from '@/services/surveyService';
+import UserService from '@/services/userService';
 
 interface AnswerGroup {
   date: string;
-  questions: ServerQuestion[];
+  responses: UserResponse[];
 }
 
 export default function MyAnswersScreen() {
@@ -41,18 +42,33 @@ export default function MyAnswersScreen() {
   const loadAnswerGroups = async () => {
     try {
       setLoading(true);
-      const questions = await SurveyService.getCompletedQuestions();
-      const groupedByDate = questions.reduce((acc, question) => {
-        if (!question.responseSubmittedAt) return acc;
-        const date = question.responseSubmittedAt.split('T')[0];
-        if (!acc[date]) acc[date] = [] as ServerQuestion[];
-        acc[date].push(question);
-        return acc;
-      }, {} as Record<string, ServerQuestion[]>);
+      const currentUser = await UserService.getCurrentUser();
+      if (!currentUser) {
+        console.error('사용자 정보를 찾을 수 없습니다.');
+        return;
+      }
 
+      const userId = parseInt(currentUser.id, 10);
+      if (isNaN(userId)) {
+        console.error('유효하지 않은 사용자 ID:', currentUser.id);
+        return;
+      }
+
+      const responseData = await SurveyService.getUserResponses(userId);
+      
+      // 날짜별로 그룹화
+      const groupedByDate = responseData.responses.reduce((acc, response) => {
+        if (!response.submittedAt) return acc;
+        const date = response.submittedAt.split('T')[0];
+        if (!acc[date]) acc[date] = [] as UserResponse[];
+        acc[date].push(response);
+        return acc;
+      }, {} as Record<string, UserResponse[]>);
+
+      // 날짜순 정렬 (최신순)
       const groups = Object.entries(groupedByDate)
         .sort((a, b) => b[0].localeCompare(a[0]))
-        .map(([date, questions]) => ({ date, questions }));
+        .map(([date, responses]) => ({ date, responses }));
 
       setAnswerGroups(groups);
     } catch (error) {
@@ -73,7 +89,7 @@ export default function MyAnswersScreen() {
       pathname: '/answer-detail',
       params: { 
         date: answerGroup.date,
-        questions: JSON.stringify(answerGroup.questions)
+        responses: JSON.stringify(answerGroup.responses)
       }
     });
   };
@@ -86,7 +102,7 @@ export default function MyAnswersScreen() {
             {item.date}
           </TossText>
           <TossText variant="caption2" color="textTertiary" style={styles.answerCount}>
-            {item.questions.length}개 답변
+            {item.responses.length}개 답변
           </TossText>
           <Text style={styles.arrow}>›</Text>
         </View>

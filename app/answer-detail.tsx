@@ -2,10 +2,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,11 +14,11 @@ import { TossCard } from '@/components/ui/TossCard';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossText } from '@/components/ui/TossText';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
-import { ServerQuestion } from '@/services/surveyService';
+import { UserResponse } from '@/services/surveyService';
 
 export default function AnswerDetailScreen() {
   const router = useRouter();
-  const { date, questions } = useLocalSearchParams();
+  const { date, responses } = useLocalSearchParams();
   const blurActiveElement = () => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const el = (document.activeElement as any);
@@ -26,13 +26,13 @@ export default function AnswerDetailScreen() {
     }
   };
   
-  let questionList: ServerQuestion[] = [];
-  if (questions) {
+  let responseList: UserResponse[] = [];
+  if (responses) {
     try {
-      questionList = JSON.parse(questions as string) as ServerQuestion[];
+      responseList = JSON.parse(responses as string) as UserResponse[];
     } catch (err) {
-      console.warn('answer-detail: failed to parse questions param', err);
-      questionList = [];
+      console.warn('answer-detail: failed to parse responses param', err);
+      responseList = [];
     }
   }
 
@@ -43,62 +43,57 @@ export default function AnswerDetailScreen() {
   };
 
   // 응답 내용을 표시하기 위한 유틸리티 함수
-  const formatAnswer = (question: ServerQuestion): string => {
-    const answer = question.responseAnswer;
-    if (!answer) return '';
+  const formatAnswer = (response: UserResponse): string => {
+    const responseData = response.responseData;
+    if (!responseData) return '';
 
-    switch (question.questionType) {
+    switch (response.questionType) {
       case 'TEXT':
-        return answer.answer || '';
+        return String(responseData.answer || '');
       case 'SCALE':
-        return String(answer.answer || '');
+        return String(responseData.answer || '');
       case 'YES_NO':
-        return answer.answer ? '예' : '아니오';
+        return responseData.answer ? '예' : '아니오';
       case 'DATE':
-        return answer.answer || '';
+        return String(responseData.answer || '');
       case 'TIME':
-        return answer.answer || '';
+        return String(responseData.answer || '');
       case 'SINGLE_CHOICE':
-        if (answer.answer === 'other') {
-          return answer.otherText || '';
+        if (responseData.answer === 'other') {
+          return responseData.otherText || '';
         }
-        // options에서 label 찾기
-        const selectedOption = question.options?.options?.find(
-          (opt: any) => opt.value === answer.answer
-        );
-        return selectedOption?.label || answer.answer || '';
+        return String(responseData.answer || '');
       case 'MULTIPLE_CHOICE':
-        if (!Array.isArray(answer.answers)) return '';
-        return answer.answers
-          .map((ans: string) => {
-            if (ans === 'other') {
-              return answer.otherText || '';
-            }
-            const selectedOption = question.options?.options?.find(
-              (opt: any) => opt.value === ans
-            );
-            return selectedOption?.label || ans;
-          })
-          .join(', ');
+        if (responseData.answers && Array.isArray(responseData.answers)) {
+          return responseData.answers
+            .map((ans: string) => {
+              if (ans === 'other') {
+                return responseData.otherText || '';
+              }
+              return ans;
+            })
+            .join(', ');
+        }
+        return String(responseData.answer || '');
       default:
         return '';
     }
   };
 
-  const renderAnswerItem = (question: ServerQuestion, index: number) => {
+  const renderAnswerItem = (response: UserResponse, index: number) => {
     return (
-      <TossCard key={question.assignmentId} style={styles.answerCard}>
+      <TossCard key={response.responseId} style={styles.answerCard}>
         <View style={styles.questionContainer}>
           <TossText variant="caption2" color="textTertiary" style={styles.questionNumber}>
             {index + 1}
           </TossText>
           <TossText variant="body1" color="textPrimary" style={styles.questionText}>
-            {question.title}
+            {response.questionTitle}
           </TossText>
         </View>
         <View style={styles.answerContainer}>
           <TossText variant="body2" color="textSecondary" style={styles.answerText}>
-            {formatAnswer(question)}
+            {formatAnswer(response)}
           </TossText>
         </View>
       </TossCard>
@@ -120,7 +115,7 @@ export default function AnswerDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {questionList.map((question, index) => renderAnswerItem(question, index))}
+        {responseList.map((response, index) => renderAnswerItem(response, index))}
       </ScrollView>
     </SafeAreaView>
   );

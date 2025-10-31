@@ -9,10 +9,11 @@ export const getApiUrl = () => {
   // __DEV__ 체크로 개발/프로덕션 구분
   if (__DEV__) {
     return 'http://192.168.0.3:8080';
+    // return 'https://onsaeapi.topazkang.com';
   }
 
   // 프로덕션 기본값 (배포 시 실제 서버 URL로 변경)
-  return 'https://api.onsae.com';
+  return 'https://onsaeapi.topazkang.com';
 };
 
 export const API_BASE_URL = getApiUrl();

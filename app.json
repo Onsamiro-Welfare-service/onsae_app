@@ -20,7 +20,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.onsaemiro"
+      "package": "com.onsaemiro",
+      "versionCode": 23
     },
     "web": {
       "output": "static",

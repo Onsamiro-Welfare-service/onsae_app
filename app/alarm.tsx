@@ -76,45 +76,79 @@ export default function AlarmScreen() {
   const toggleAlarm = async (enabled: boolean) => {
     try {
       const newSettings = { ...alarmSettings, enabled };
-      setAlarmSettings(newSettings);
       
       if (enabled) {
         // 알람 활성화
         await AlarmService.scheduleAlarm(newSettings);
-        Alert.alert('알람 설정', '알람이 설정되었습니다!');
+        setAlarmSettings(newSettings);
+        
+        // 스케줄된 알람 확인
+        const scheduledNotifications = await AlarmService.getScheduledNotifications();
+        const alarmCount = scheduledNotifications.filter(n => 
+          n.identifier.startsWith('daily_survey_alarm')
+        ).length;
+        
+        if (alarmCount > 0) {
+          Alert.alert('알람 설정', `${alarmCount}개의 알람이 설정되었습니다!`);
+        } else {
+          Alert.alert('알람 설정', '알람이 설정되었습니다!');
+        }
       } else {
         // 알람 비활성화
         await AlarmService.cancelAlarm();
+        setAlarmSettings(newSettings);
         Alert.alert('알람 해제', '알람이 해제되었습니다.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('알람 설정 실패:', error);
-      Alert.alert('오류', '알람 설정에 실패했습니다.');
+      const errorMessage = error?.message || '알람 설정에 실패했습니다.';
+      Alert.alert('오류', errorMessage, [
+        { text: '확인', style: 'default' },
+        ...(errorMessage.includes('권한') ? [{ 
+          text: '설정으로 이동', 
+          onPress: () => {
+            // 사용자가 수동으로 설정으로 이동해야 함
+            Alert.alert('알림', '설정 > 앱 > 온새미로 > 알림에서 권한을 허용해주세요.');
+          }
+        }] : [])
+      ]);
     }
   };
 
-  const handleTimeChange = (time: Date) => {
-    const timeString = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
-    const newSettings = { ...alarmSettings, time: timeString };
-    setAlarmSettings(newSettings);
-    
-    if (alarmSettings.enabled) {
-      // 알람이 활성화되어 있으면 즉시 업데이트
-      AlarmService.scheduleAlarm(newSettings);
+  const handleTimeChange = async (time: Date) => {
+    try {
+      const timeString = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
+      const newSettings = { ...alarmSettings, time: timeString };
+      
+      if (alarmSettings.enabled) {
+        // 알람이 활성화되어 있으면 즉시 업데이트
+        await AlarmService.scheduleAlarm(newSettings);
+      }
+      
+      setAlarmSettings(newSettings);
+    } catch (error: any) {
+      console.error('시간 변경 실패:', error);
+      Alert.alert('오류', error?.message || '시간 변경에 실패했습니다.');
     }
   };
 
-  const toggleRepeatDay = (day: string) => {
-    const newRepeatDays = alarmSettings.repeatDays.includes(day)
-      ? alarmSettings.repeatDays.filter(d => d !== day)
-      : [...alarmSettings.repeatDays, day];
-    
-    const newSettings = { ...alarmSettings, repeatDays: newRepeatDays };
-    setAlarmSettings(newSettings);
-    
-    if (alarmSettings.enabled) {
-      // 알람이 활성화되어 있으면 즉시 업데이트
-      AlarmService.scheduleAlarm(newSettings);
+  const toggleRepeatDay = async (day: string) => {
+    try {
+      const newRepeatDays = alarmSettings.repeatDays.includes(day)
+        ? alarmSettings.repeatDays.filter(d => d !== day)
+        : [...alarmSettings.repeatDays, day];
+      
+      const newSettings = { ...alarmSettings, repeatDays: newRepeatDays };
+      
+      if (alarmSettings.enabled) {
+        // 알람이 활성화되어 있으면 즉시 업데이트
+        await AlarmService.scheduleAlarm(newSettings);
+      }
+      
+      setAlarmSettings(newSettings);
+    } catch (error: any) {
+      console.error('반복 요일 변경 실패:', error);
+      Alert.alert('오류', error?.message || '반복 요일 변경에 실패했습니다.');
     }
   };
 

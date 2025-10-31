@@ -24,11 +24,8 @@ class AlarmService {
         return false;
       }
 
-      // Expo Go에서는 알림 기능이 제한됨
-      if (__DEV__ && (Platform.OS === 'ios' || Platform.OS === 'android')) {
-        console.log('Expo Go에서는 알림 기능이 제한됩니다. 개발 빌드를 사용해주세요.');
-        return false;
-      }
+      // Expo Go에서는 알림 기능이 제한되지만, 개발 빌드에서는 작동해야 함
+      // __DEV__ 체크는 제거하고 실제 권한 상태만 확인
 
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -103,12 +100,8 @@ class AlarmService {
         return;
       }
 
-      // Expo Go에서는 알림 기능이 제한됨
-      if (__DEV__ && (Platform.OS === 'ios' || Platform.OS === 'android')) {
-        console.log('Expo Go에서는 알림 기능이 제한됩니다. 설정만 저장됩니다.');
-        await this.saveAlarmSettings(settings);
-        return;
-      }
+      // 개발 빌드에서는 알림이 작동해야 하므로 제한하지 않음
+      // 단, 웹과 Expo Go 환경에서는 제한됨
 
       // 권한 확인
       const hasPermission = await this.requestPermissions();
@@ -134,13 +127,19 @@ class AlarmService {
         const weekday = this.getWeekdayNumber(day);
         const [hour, minute] = settings.time.split(':').map(Number);
 
-        await Notifications.scheduleNotificationAsync({
+        const notificationConfig: Notifications.NotificationRequestInput = {
           identifier: `${ALARM_NOTIFICATION_ID}_${day}`,
           content: {
             title: '📋 문진 시간입니다!',
             body: '오늘의 문진을 완료해주세요.',
             sound: 'default',
             priority: Notifications.AndroidNotificationPriority.HIGH,
+            data: { type: 'alarm' },
+            ...(Platform.OS === 'android' && {
+              android: {
+                channelId: 'alarm',
+              },
+            } as any),
           },
           trigger: {
             weekday,
@@ -148,7 +147,9 @@ class AlarmService {
             minute,
             repeats: true,
           } as Notifications.CalendarTriggerInput,
-        });
+        };
+
+        await Notifications.scheduleNotificationAsync(notificationConfig);
       }
 
       console.log('알람이 성공적으로 설정되었습니다.');
@@ -198,15 +199,23 @@ class AlarmService {
       }
 
       // 즉시 알람 발송
-      await Notifications.scheduleNotificationAsync({
+      const testNotificationConfig: Notifications.NotificationRequestInput = {
         content: {
           title: '🔔 테스트 알람',
           body: '알람이 정상적으로 작동합니다!',
           sound: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: { type: 'test' },
+          ...(Platform.OS === 'android' && {
+            android: {
+              channelId: 'alarm',
+            },
+          } as any),
         },
         trigger: null, // 즉시 발송
-      });
+      };
+
+      await Notifications.scheduleNotificationAsync(testNotificationConfig);
 
       console.log('테스트 알람이 발송되었습니다.');
     } catch (error) {

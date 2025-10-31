@@ -125,7 +125,7 @@ class SurveyService {
   // 서버에서 질문 목록 가져오기
   static async getSurveyQuestions(): Promise<ServerQuestion[]> {
     try {
-      const data = await get<ServerQuestion[]>('/api/user/questions');
+      const data = await get<ServerQuestion[]>('/api/user/questions/pending');
       const sorted = [...data].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
       return sorted;
     } catch (error) {

@@ -226,7 +226,7 @@ export default function SurveyScreen() {
       }
 
       console.log('설문 응답 제출 완료');
-      router.push('/complete');
+      router.replace('/complete');
     } catch (error) {
       console.error('설문 응답 제출 실패:', error);
       

@@ -11,6 +11,9 @@ export interface AlarmSettings {
 // 알람 설정 저장 키
 const ALARM_SETTINGS_KEY = 'alarm_settings';
 
+// 스케줄된 알림 ID 저장 키
+const SCHEDULED_IDS_KEY = 'alarm_scheduled_ids';
+
 // 알람 ID 상수
 const ALARM_NOTIFICATION_ID = 'daily_survey_alarm';
 
@@ -109,10 +112,12 @@ class AlarmService {
         throw new Error('알람 권한이 없습니다.');
       }
 
-      // 기존 알람 취소
+      // 기존 알람(이전 스케줄) 취소 — 저장된 ID기반으로만 취소
       await this.cancelAlarm();
 
       if (!settings.enabled) {
+        // 설정 저장은 항상 해둠
+        await this.saveAlarmSettings(settings);
         return;
       }
 
@@ -120,39 +125,47 @@ class AlarmService {
       await this.saveAlarmSettings(settings);
 
       // 반복 요일이 없으면 매일로 설정
-      const repeatDays = settings.repeatDays.length > 0 ? settings.repeatDays : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const repeatDays = settings.repeatDays.length > 0 ? settings.repeatDays : ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+      const scheduledIds: string[] = [];
 
       // 각 요일별로 알람 스케줄링
       for (const day of repeatDays) {
         const weekday = this.getWeekdayNumber(day);
         const [hour, minute] = settings.time.split(':').map(Number);
 
-        const notificationConfig: Notifications.NotificationRequestInput = {
-          identifier: `${ALARM_NOTIFICATION_ID}_${day}`,
-          content: {
-            title: '📋 문진 시간입니다!',
-            body: '오늘의 문진을 완료해주세요.',
-            sound: 'default',
+        const content: Notifications.NotificationContentInput = {
+          title: '📋 문진 시간입니다!',
+          body: '오늘의 문진을 완료해주세요.',
+          data: { type: 'alarm', day },
+          // Android-specific options should live under the android key
+          ...(Platform.OS === 'android' ? { android: {
+            channelId: 'alarm',
             priority: Notifications.AndroidNotificationPriority.HIGH,
-            data: { type: 'alarm' },
-            ...(Platform.OS === 'android' && {
-              android: {
-                channelId: 'alarm',
-              },
-            } as any),
-          },
-          trigger: {
-            weekday,
-            hour,
-            minute,
-            repeats: true,
-          } as Notifications.CalendarTriggerInput,
-        };
+            sound: 'default',
+          } } : {}),
+        } as Notifications.NotificationContentInput;
 
-        await Notifications.scheduleNotificationAsync(notificationConfig);
+        const trigger: Notifications.CalendarTriggerInput = {
+          // 명시적으로 타입을 calendar로 설정해야 하는 경우가 있음
+          type: 'calendar',
+          weekday,
+          hour,
+          minute,
+          repeats: true,
+        } as any;
+
+        // scheduleNotificationAsync은 content, trigger 형태 또는 { content, trigger } 를 허용
+        const request = { content, trigger };
+
+        const id = await Notifications.scheduleNotificationAsync(request as any);
+        scheduledIds.push(id);
       }
 
-      console.log('알람이 성공적으로 설정되었습니다.');
+      // 스케줄된 알림 ID들 저장
+      await AsyncStorage.setItem(SCHEDULED_IDS_KEY, JSON.stringify(scheduledIds));
+
+      console.log('알람이 성공적으로 설정되었습니다. scheduledIds=', scheduledIds);
     } catch (error) {
       console.error('알람 스케줄링 실패:', error);
       throw error;
@@ -168,9 +181,26 @@ class AlarmService {
         return;
       }
 
-      // 모든 알람 취소
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      console.log('모든 알람이 취소되었습니다.');
+      // 먼저 저장된 스케줄된 ID 목록을 가져와서 개별 취소
+      const idsString = await AsyncStorage.getItem(SCHEDULED_IDS_KEY);
+      if (idsString) {
+        const ids: string[] = JSON.parse(idsString);
+        for (const id of ids) {
+          try {
+            await Notifications.cancelScheduledNotificationAsync(id);
+          } catch (e) {
+            console.warn('개별 알람 취소 실패 id=', id, e);
+          }
+        }
+      }
+
+      // 만약 저장된 ID가 없거나 남아있는 예약이 있을 경우를 대비해 전체 취소를 안전하게 호출
+      // (대부분의 경우 개별 취소로 충분)
+      // await Notifications.cancelAllScheduledNotificationsAsync();
+
+      // 저장된 ID 제거
+      await AsyncStorage.removeItem(SCHEDULED_IDS_KEY);
+      console.log('스케줄된 알람이 취소되고 저장된 ID가 제거되었습니다.');
     } catch (error) {
       console.error('알람 취소 실패:', error);
       throw error;

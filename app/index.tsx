@@ -2,10 +2,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
+  BackHandler,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,6 +31,23 @@ export default function HomeScreen() {
   // 문진 완료 여부 확인
   useEffect(() => {
     checkSurveyStatus();
+  }, []);
+
+  // Android 하드웨어 뒤로가기 처리: 루트에서 뒤로가기 시 종료 확인
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const onBackPress = () => {
+      Alert.alert('앱 종료', '종료하시겠습니까?', [
+        { text: '취소', style: 'cancel' },
+        { text: '종료', style: 'destructive', onPress: () => BackHandler.exitApp() },
+      ]);
+      // 핸들러가 자체적으로 처리했음을 알림
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
   }, []);
 
   const checkSurveyStatus = async () => {

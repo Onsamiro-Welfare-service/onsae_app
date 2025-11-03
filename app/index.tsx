@@ -28,7 +28,7 @@ import SurveyService from '@/services/surveyService';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [isSurveyCompleted, setIsSurveyCompleted] = useState(false);
+  const [isSurveyCompleted, setIsSurveyCompleted] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;

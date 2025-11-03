@@ -35,7 +35,11 @@ function TimeWheel({
   items: number[];
   wheelId: string;
 }) {
-  const scrollY = useRef(new Animated.Value(0)).current;
+  // 초기 스크롤 위치를 value에 맞게 설정
+  const initialIndex = items.indexOf(value);
+  const initialScrollY = initialIndex >= 0 ? initialIndex * ITEM_HEIGHT : 0;
+  
+  const scrollY = useRef(new Animated.Value(initialScrollY)).current;
   const isDragging = useRef(false);
   const startY = useRef(0);
   const startScrollY = useRef(0);
@@ -180,153 +184,6 @@ function TimeWheel({
   );
 }
 
-// 오전/오후 휠 컴포넌트 (현재 사용하지 않음)
-// function PeriodWheel({ 
-//   value, 
-//   onChange 
-// }: { 
-//   value: 'AM' | 'PM'; 
-//   onChange: (val: 'AM' | 'PM') => void;
-// }) {
-//   const scrollY = useRef(new Animated.Value(value === 'AM' ? 0 : ITEM_HEIGHT)).current;
-//   const isDragging = useRef(false);
-//   const startY = useRef(0);
-//   const startScrollY = useRef(0);
-//   const currentValueRef = useRef(value);
-// 
-//   const items = ['오전', '오후'];
-// 
-//   // value 변경 시 ref 업데이트
-//   useEffect(() => {
-//     currentValueRef.current = value;
-//   }, [value]);
-// 
-//   const panResponder = useRef(
-//     PanResponder.create({
-//       onStartShouldSetPanResponder: () => true,
-//       onMoveShouldSetPanResponder: () => true,
-//       
-//       onPanResponderGrant: (evt) => {
-//         isDragging.current = true;
-//         startY.current = evt.nativeEvent.pageY;
-//         // @ts-ignore
-//         startScrollY.current = scrollY._value;
-//       },
-//       
-//       onPanResponderMove: (evt) => {
-//         if (!isDragging.current) return;
-//         
-//         const deltaY = evt.nativeEvent.pageY - startY.current;
-//         const newScrollY = startScrollY.current - deltaY;
-//         
-//         const clampedScrollY = Math.max(0, Math.min(ITEM_HEIGHT, newScrollY));
-//         scrollY.setValue(clampedScrollY);
-//       },
-//       
-//       onPanResponderRelease: () => {
-//         if (!isDragging.current) return;
-//         isDragging.current = false;
-//         
-//         // @ts-ignore
-//         const currentScroll = scrollY._value;
-//         const nearestIndex = Math.round(currentScroll / ITEM_HEIGHT);
-//         const clampedIndex = Math.max(0, Math.min(1, nearestIndex));
-//         
-//         Animated.spring(scrollY, {
-//           toValue: clampedIndex * ITEM_HEIGHT,
-//           useNativeDriver: true,
-//           tension: 100,
-//           friction: 10,
-//         }).start();
-//         
-//         const newValue = clampedIndex === 0 ? 'AM' : 'PM';
-//         currentValueRef.current = newValue;
-//         onChange(newValue);
-//       },
-//     })
-//   ).current;
-// 
-//   // 외부에서 value가 변경되고 드래그 중이 아닐 때만 애니메이션
-//   useEffect(() => {
-//     if (!isDragging.current) {
-//       const targetValue = value === 'AM' ? 0 : ITEM_HEIGHT;
-//       Animated.spring(scrollY, {
-//         toValue: targetValue,
-//         useNativeDriver: true,
-//         tension: 100,
-//         friction: 10,
-//       }).start();
-//     }
-//   }, [value]);
-// 
-//   return (
-//     <View style={styles.wheelContainer} {...panResponder.panHandlers}>
-//       <View style={styles.wheelMask}>
-//         <Animated.View
-//           style={[
-//             styles.wheelItems,
-//             {
-//               transform: [
-//                 {
-//                   translateY: Animated.subtract(
-//                     CENTER_INDEX * ITEM_HEIGHT,
-//                     scrollY
-//                   ),
-//                 },
-//               ],
-//             },
-//           ]}
-//         >
-//           {items.map((item, index) => {
-//             const inputRange = [
-//               (index - 1) * ITEM_HEIGHT,
-//               index * ITEM_HEIGHT,
-//               (index + 1) * ITEM_HEIGHT,
-//             ];
-// 
-//             const opacity = scrollY.interpolate({
-//               inputRange,
-//               outputRange: [0.3, 1, 0.3],
-//               extrapolate: 'clamp',
-//             });
-// 
-//             const scale = scrollY.interpolate({
-//               inputRange,
-//               outputRange: [0.8, 1.2, 0.8],
-//               extrapolate: 'clamp',
-//             });
-// 
-//             return (
-//               <Animated.View
-//                 key={`period-${item}`}
-//                 style={[
-//                   styles.wheelItem,
-//                   {
-//                     opacity,
-//                     transform: [{ scale }],
-//                   },
-//                 ]}
-//               >
-//                 <TossText
-//                   variant="title1"
-//                   color="textPrimary"
-//                   style={styles.wheelItemText}
-//                 >
-//                   {item}
-//                 </TossText>
-//               </Animated.View>
-//             );
-//           })}
-//         </Animated.View>
-//       </View>
-//       
-//       {/* 선택 인디케이터 */}
-//       <View style={styles.wheelIndicator} pointerEvents="none">
-//         <View style={styles.orangeUnderline} />
-//       </View>
-//     </View>
-//   );
-// }
 
 export function TossTimePicker({
   visible,
@@ -336,14 +193,18 @@ export function TossTimePicker({
   onConfirm,
 }: TossTimePickerProps) {
   // 내부 상태로 시간 관리 (24시간 형식)
-  const [hour, setHour] = useState(0);
-  const [minute, setMinute] = useState(0);
+  // 초기값을 selectedTime에서 가져옴
+  const [hour, setHour] = useState(() => selectedTime?.getHours() || 0);
+  const [minute, setMinute] = useState(() => selectedTime?.getMinutes() || 0);
   
-  // 모달이 열릴 때 외부 시간을 가져옴
+  // 모달이 열릴 때마다 외부 시간을 가져옴
   useEffect(() => {
-    if (visible) {
-      setHour(selectedTime.getHours());
-      setMinute(selectedTime.getMinutes());
+    if (visible && selectedTime) {
+      const newHour = selectedTime.getHours();
+      const newMinute = selectedTime.getMinutes();
+      
+      setHour(newHour);
+      setMinute(newMinute);
     }
   }, [visible, selectedTime]);
 

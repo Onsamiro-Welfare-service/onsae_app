@@ -1,11 +1,17 @@
-import { useRouter } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
+  Animated,
+  BackHandler,
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  View
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,23 +30,70 @@ export default function HomeScreen() {
   const router = useRouter();
   const [isSurveyCompleted, setIsSurveyCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   // 문진 완료 여부 확인
-  useEffect(() => {
-    checkSurveyStatus();
-  }, []);
-
-  const checkSurveyStatus = async () => {
+  const checkSurveyStatus = useCallback(async (isRefresh = false) => {
     try {
+      if (isRefresh) {
+        setRefreshing(true);
+        // 회전 애니메이션 시작
+        rotateAnim.setValue(0);
+        Animated.loop(
+          Animated.timing(rotateAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          })
+        ).start();
+      } else {
+        setLoading(true);
+      }
       const completed = await SurveyService.isTodaySurveyCompleted();
-      // const completed = false;
       setIsSurveyCompleted(completed);
     } catch (error) {
       console.error('문진 상태 확인 실패:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+      // 애니메이션 정지
+      rotateAnim.stopAnimation();
+      rotateAnim.setValue(0);
     }
+  }, [rotateAnim]);
+
+  useEffect(() => {
+    checkSurveyStatus();
+  }, [checkSurveyStatus]);
+
+  // Android 하드웨어 뒤로가기 처리: 이 페이지에서만 뒤로가기 시 종료 확인
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android') return;
+
+      const onBackPress = () => {
+        Alert.alert('앱 종료', '종료하시겠습니까?', [
+          { text: '취소', style: 'cancel' },
+          { text: '종료', style: 'destructive', onPress: () => BackHandler.exitApp() },
+        ]);
+        // 핸들러가 자체적으로 처리했음을 알림
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [])
+  );
+
+  const handleRefresh = () => {
+    checkSurveyStatus(true);
   };
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   const handleLogout = () => {
     UserService.logout();
@@ -103,9 +156,31 @@ export default function HomeScreen() {
       >
         {/* 메인 카드 */}
         <TossCard style={styles.mainCard}>
-          <TossText variant="title3" color="textPrimary" style={styles.cardText}>
-            오늘도 안전하고 건강한 하루 보내세요! 😊
-          </TossText>
+          <View>
+            <Pressable
+              onPress={handleRefresh}
+              disabled={refreshing}
+              style={({ pressed }) => [
+                styles.refreshIconContainer,
+                pressed && styles.refreshIconPressed,
+                refreshing && styles.refreshIconActive,
+              ]}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                <MaterialIcons
+                  name="refresh"
+                  size={22}
+                  color={refreshing ? TossColors.primary : TossColors.textSecondary}
+                />
+              </Animated.View>
+            </Pressable>
+          </View>
+          <View style={styles.cardHeader}>
+            <TossText variant="title3" color="textPrimary" style={styles.cardText}>
+              오늘도 안전하고 건강한 하루 보내세요! 😊
+            </TossText>
+          </View>
           
           <View style={styles.iconContainer}>
             <Text style={styles.noteIcon}>📋</Text>
@@ -192,9 +267,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: TossSpacing.xl,
   },
-  cardText: {
-    textAlign: 'center',
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
     marginBottom: TossSpacing.xl,
+    paddingHorizontal: TossSpacing.xs,
+  },
+  cardText: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  refreshIconContainer: {
+    position: 'absolute',
+    top: -28,
+    right: 0,
+  },
+  refreshIconPressed: {
+    backgroundColor: TossColors.background,
+    opacity: 0.7,
+  },
+  refreshIconActive: {
+    opacity: 1,
   },
   iconContainer: {
     alignItems: 'center',

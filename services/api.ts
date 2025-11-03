@@ -37,7 +37,7 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   const text = await res.text();
   const isJson = (res.headers.get('content-type') || '').includes('application/json');
   const data = (isJson && text) ? JSON.parse(text) : (undefined as unknown as T);
-  
+  console.log('res',res);
   if (!res.ok) {
     // 400~500 에러 처리
     let message = res.statusText || 'Request failed';

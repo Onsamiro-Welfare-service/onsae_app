@@ -1,69 +1,50 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
-  Platform,
   ScrollView,
   StyleSheet,
   Switch,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { TossButton } from '@/components/ui/TossButton';
 import { TossCard } from '@/components/ui/TossCard';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossText } from '@/components/ui/TossText';
-import { TossTimePicker } from '@/components/ui/TossTimePicker';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
-import AlarmService from '@/services/alarmService';
-
-interface AlarmSettings {
-  enabled: boolean;
-  time: string; // HH:MM 형식
-  repeatDays: string[]; // ['monday', 'tuesday', ...]
-}
+import AlarmService, { AlarmItem } from '@/services/alarmService';
 
 const DAYS_OF_WEEK = [
+  { key: 'sunday', label: '일' },
   { key: 'monday', label: '월' },
   { key: 'tuesday', label: '화' },
   { key: 'wednesday', label: '수' },
   { key: 'thursday', label: '목' },
   { key: 'friday', label: '금' },
   { key: 'saturday', label: '토' },
-  { key: 'sunday', label: '일' },
 ];
 
 export default function AlarmScreen() {
   const router = useRouter();
-  const [alarmSettings, setAlarmSettings] = useState<AlarmSettings>({
-    enabled: false,
-    time: '09:00',
-    repeatDays: [],
-  });
-  const [timeModalVisible, setTimeModalVisible] = useState(false);
-  const [selectedTime, setSelectedTime] = useState<Date>(new Date());
+  const [alarms, setAlarms] = useState<AlarmItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAlarmSettings();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadAlarms();
+    }, [])
+  );
 
-  const loadAlarmSettings = async () => {
+  const loadAlarms = async () => {
     try {
-      const settings = await AlarmService.getAlarmSettings();
-      setAlarmSettings(settings);
-      
-      // 시간 설정
-      if (settings.time) {
-        const [hour, minute] = settings.time.split(':').map(Number);
-        const time = new Date();
-        time.setHours(hour, minute, 0, 0);
-        setSelectedTime(time);
-      }
+      setLoading(true);
+      const alarmList = await AlarmService.getAlarmList();
+      setAlarms(alarmList);
     } catch (error) {
-      console.error('알람 설정 로드 실패:', error);
+      console.error('알람 목록 로드 실패:', error);
     } finally {
       setLoading(false);
     }
@@ -73,104 +54,28 @@ export default function AlarmScreen() {
     router.back();
   };
 
-  const toggleAlarm = async (enabled: boolean) => {
+  const handleAddAlarm = () => {
+    router.push('/alarm-edit' as any);
+  };
+
+  const handleEditAlarm = (alarm: AlarmItem) => {
+    router.push({
+      pathname: '/alarm-edit' as any,
+      params: { alarmId: alarm.id },
+    });
+  };
+
+  const handleToggleAlarm = async (alarm: AlarmItem, enabled: boolean) => {
     try {
-      const newSettings = { ...alarmSettings, enabled };
-      
-      if (enabled) {
-        // 알람 활성화
-        await AlarmService.scheduleAlarm(newSettings);
-        setAlarmSettings(newSettings);
-        
-        // 스케줄된 알람 확인
-        const scheduledNotifications = await AlarmService.getScheduledNotifications();
-        const alarmCount = scheduledNotifications.filter(n => 
-          n.identifier.startsWith('daily_survey_alarm')
-        ).length;
-        
-        if (alarmCount > 0) {
-          Alert.alert('알람 설정', `${alarmCount}개의 알람이 설정되었습니다!`);
-        } else {
-          Alert.alert('알람 설정', '알람이 설정되었습니다!');
-        }
-      } else {
-        // 알람 비활성화
-        await AlarmService.cancelAlarm();
-        setAlarmSettings(newSettings);
-        Alert.alert('알람 해제', '알람이 해제되었습니다.');
-      }
+      const updatedAlarm = { ...alarm, enabled };
+      await AlarmService.saveAlarm(updatedAlarm);
+      await loadAlarms();
     } catch (error: any) {
-      console.error('알람 설정 실패:', error);
-      const errorMessage = error?.message || '알람 설정에 실패했습니다.';
-      Alert.alert('오류', errorMessage, [
-        { text: '확인', style: 'default' },
-        ...(errorMessage.includes('권한') ? [{ 
-          text: '설정으로 이동', 
-          onPress: () => {
-            // 사용자가 수동으로 설정으로 이동해야 함
-            Alert.alert('알림', '설정 > 앱 > 온새미로 > 알림에서 권한을 허용해주세요.');
-          }
-        }] : [])
-      ]);
+      console.error('알람 토글 실패:', error);
+      Alert.alert('오류', error?.message || '알람 상태 변경에 실패했습니다.');
     }
   };
 
-  const handleTimeChange = async (time: Date) => {
-    try {
-      const timeString = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
-      const newSettings = { ...alarmSettings, time: timeString };
-      
-      if (alarmSettings.enabled) {
-        // 알람이 활성화되어 있으면 즉시 업데이트
-        await AlarmService.scheduleAlarm(newSettings);
-      }
-      
-      setAlarmSettings(newSettings);
-    } catch (error: any) {
-      console.error('시간 변경 실패:', error);
-      Alert.alert('오류', error?.message || '시간 변경에 실패했습니다.');
-    }
-  };
-
-  const toggleRepeatDay = async (day: string) => {
-    try {
-      const newRepeatDays = alarmSettings.repeatDays.includes(day)
-        ? alarmSettings.repeatDays.filter(d => d !== day)
-        : [...alarmSettings.repeatDays, day];
-      
-      const newSettings = { ...alarmSettings, repeatDays: newRepeatDays };
-      
-      if (alarmSettings.enabled) {
-        // 알람이 활성화되어 있으면 즉시 업데이트
-        await AlarmService.scheduleAlarm(newSettings);
-      }
-      
-      setAlarmSettings(newSettings);
-    } catch (error: any) {
-      console.error('반복 요일 변경 실패:', error);
-      Alert.alert('오류', error?.message || '반복 요일 변경에 실패했습니다.');
-    }
-  };
-
-  const testAlarm = async () => {
-    try {
-      if (Platform.OS === 'web') {
-        Alert.alert('알림', '웹에서는 테스트 알람이 지원되지 않습니다. 모바일 앱에서 사용해주세요.');
-        return;
-      }
-
-      if (__DEV__ && (Platform.OS === 'ios' || Platform.OS === 'android')) {
-        Alert.alert('알림', 'Expo Go에서는 테스트 알람이 지원되지 않습니다. 개발 빌드를 사용해주세요.');
-        return;
-      }
-
-      await AlarmService.testAlarm();
-      Alert.alert('테스트 알람', '테스트 알람이 발송되었습니다!');
-    } catch (error) {
-      console.error('테스트 알람 실패:', error);
-      Alert.alert('오류', '테스트 알람 발송에 실패했습니다.');
-    }
-  };
 
   const formatTime = (timeString: string) => {
     const [hour, minute] = timeString.split(':').map(Number);
@@ -179,13 +84,21 @@ export default function AlarmScreen() {
     return `${period} ${String(displayHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   };
 
+  const formatRepeatDays = (repeatDays: string[]) => {
+    if (repeatDays.length === 0) return '반복 없음';
+    if (repeatDays.length === 7) return '매일';
+    
+    const sortedDays = DAYS_OF_WEEK.filter(d => repeatDays.includes(d.key));
+    return sortedDays.map(d => d.label).join(' ');
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" backgroundColor={TossColors.background} />
-        <TossHeader title="알람 설정" showBackButton onBackPress={handleBack} />
+        <TossHeader title="알람" showBackButton onBackPress={handleBack} />
         <View style={styles.centerContent}>
-          <TossText variant="body1" color="textSecondary">알람 설정을 불러오는 중...</TossText>
+          <TossText variant="body1" color="textSecondary">알람 목록을 불러오는 중...</TossText>
         </View>
       </SafeAreaView>
     );
@@ -195,112 +108,82 @@ export default function AlarmScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" backgroundColor={TossColors.background} />
       
-      <TossHeader title="알람 설정" showBackButton onBackPress={handleBack} />
+      <TossHeader 
+        title="알람" 
+        showBackButton 
+        onBackPress={handleBack}
+        rightIcon="+"
+        onRightPress={handleAddAlarm}
+      />
 
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* 플랫폼 제한사항 안내 메시지 */}
-        {(Platform.OS === 'web' || (__DEV__ && (Platform.OS === 'ios' || Platform.OS === 'android'))) && (
-          <TossCard style={styles.card}>
-            <TossText variant="body1" color="textPrimary" style={styles.cardTitle}>
-              ⚠️ 플랫폼 제한사항
+        {alarms.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <TossText variant="body1" color="textSecondary" style={styles.emptyText}>
+              알람이 없습니다.{'\n'}
+              + 버튼을 눌러 알람을 추가하세요.
             </TossText>
-            <TossText variant="caption2" color="textSecondary" style={styles.warningText}>
-              {Platform.OS === 'web' 
-                ? '웹에서는 실제 알람이 울리지 않습니다. 설정은 저장되며, 모바일 앱에서 실제 알람을 받을 수 있습니다.'
-                : 'Expo Go에서는 알림 기능이 제한됩니다. 개발 빌드를 사용하면 모든 기능을 사용할 수 있습니다.'
-              }
-            </TossText>
-          </TossCard>
+          </View>
+        ) : (
+          alarms.map((alarm) => (
+            <TossCard key={alarm.id} style={styles.alarmCard}>
+              <TouchableOpacity
+                style={styles.alarmContent}
+                onPress={() => handleEditAlarm(alarm)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.alarmMain}>
+                  <View style={styles.alarmTimeRow}>
+                    <TossText variant="title1" color="textPrimary" style={styles.alarmTime}>
+                      {formatTime(alarm.time)}
+                    </TossText>
+                    <Switch
+                      value={alarm.enabled}
+                      onValueChange={(enabled) => handleToggleAlarm(alarm, enabled)}
+                      trackColor={{ false: TossColors.gray200, true: TossColors.primary }}
+                      thumbColor={alarm.enabled ? TossColors.white : TossColors.gray400}
+                    />
+                  </View>
+                  
+                  {alarm.name && (
+                    <TossText variant="body2" color="textSecondary" style={styles.alarmName}>
+                      {alarm.name}
+                    </TossText>
+                  )}
+                  
+                  <View style={styles.repeatDaysContainer}>
+                    {DAYS_OF_WEEK.map((day) => {
+                      const isSelected = alarm.repeatDays.includes(day.key);
+                      return (
+                        <View
+                          key={day.key}
+                          style={[
+                            styles.dayDot,
+                            isSelected && alarm.enabled && styles.dayDotActive,
+                          ]}
+                        >
+                          <TossText
+                            variant="caption2"
+                            color={isSelected && alarm.enabled ? 'white' : 'textTertiary'}
+                          >
+                            {day.label}
+                          </TossText>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </TossCard>
+          ))
         )}
-
-        {/* 알람 활성화 카드 */}
-        <TossCard style={styles.card}>
-          <View style={styles.switchContainer}>
-            <View style={styles.switchTextContainer}>
-              <TossText variant="title3" color="textPrimary">
-                알람 활성화
-              </TossText>
-              <TossText variant="caption2" color="textSecondary">
-                매일 문진 알람을 받아보세요
-              </TossText>
-            </View>
-            <Switch
-              value={alarmSettings.enabled}
-              onValueChange={toggleAlarm}
-              trackColor={{ false: TossColors.gray200, true: TossColors.primary }}
-              thumbColor={alarmSettings.enabled ? TossColors.white : TossColors.gray400}
-            />
-          </View>
-        </TossCard>
-
-        {/* 시간 설정 카드 */}
-        <TossCard style={styles.card}>
-          <TossText variant="body1" color="textPrimary" style={styles.cardTitle}>
-            알람 시간
-          </TossText>
-          <TossButton
-            title={formatTime(alarmSettings.time)}
-            onPress={() => setTimeModalVisible(true)}
-            variant="outline"
-            size="medium"
-            style={styles.timeButton}
-          />
-        </TossCard>
-
-        {/* 반복 요일 설정 카드 */}
-        <TossCard style={styles.card}>
-          <TossText variant="body1" color="textPrimary" style={styles.cardTitle}>
-            반복 요일
-          </TossText>
-          <View style={styles.daysContainer}>
-            {DAYS_OF_WEEK.map((day) => (
-              <TossButton
-                key={day.key}
-                title={day.label}
-                onPress={() => toggleRepeatDay(day.key)}
-                variant={alarmSettings.repeatDays.includes(day.key) ? "primary" : "outline"}
-                size="xsmall"
-                style={styles.dayButton}
-              />
-            ))}
-          </View>
-        </TossCard>
-
-        {/* 테스트 알람 카드 */}
-        <TossCard style={styles.card}>
-          <TossText variant="body1" color="textPrimary" style={styles.cardTitle}>
-            테스트 알람
-          </TossText>
-          <TossText variant="caption2" color="textSecondary" style={styles.testDescription}>
-            알람이 제대로 작동하는지 테스트해보세요
-          </TossText>
-          <TossButton
-            title="테스트 알람 발송"
-            onPress={testAlarm}
-            variant="secondary"
-            size="medium"
-            style={styles.testButton}
-          />
-        </TossCard>
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
-
-      {/* 시간 선택 모달 */}
-      <TossTimePicker
-        visible={timeModalVisible}
-        selectedTime={selectedTime}
-        onTimeChange={setSelectedTime}
-        onClose={() => setTimeModalVisible(false)}
-        onConfirm={(time) => {
-          handleTimeChange(time);
-          setTimeModalVisible(false);
-        }}
-      />
     </SafeAreaView>
   );
 }
@@ -321,41 +204,58 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: TossSpacing.lg,
-    paddingTop: TossSpacing.lg,
+    paddingTop: TossSpacing.md,
   },
-  card: {
-    marginBottom: TossSpacing.lg,
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: TossSpacing.xxl,
   },
-  cardTitle: {
+  emptyText: {
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  alarmCard: {
     marginBottom: TossSpacing.md,
   },
-  switchContainer: {
+  alarmContent: {
+    width: '100%',
+  },
+  alarmMain: {
+    width: '100%',
+  },
+  alarmTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: TossSpacing.sm,
   },
-  switchTextContainer: {
-    flex: 1,
+  alarmTime: {
+    fontSize: 32,
+    fontWeight: '600',
   },
-  timeButton: {
-    width: '100%',
+  alarmName: {
+    marginBottom: TossSpacing.sm,
   },
-  daysContainer: {
+  repeatDaysContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: TossSpacing.sm,
+    gap: TossSpacing.xs,
+    marginBottom: TossSpacing.xs,
   },
-  dayButton: {
-    flex: 1
+  dayDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: TossColors.gray100,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  testDescription: {
-    marginBottom: TossSpacing.md,
+  dayDotActive: {
+    backgroundColor: TossColors.primary,
   },
-  testButton: {
-    width: '100%',
-  },
-  warningText: {
-    lineHeight: 18,
+  repeatText: {
+    marginTop: TossSpacing.xs,
   },
   bottomSpacing: {
     height: TossSpacing.xxl,

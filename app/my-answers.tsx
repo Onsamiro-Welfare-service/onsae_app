@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,32 +11,29 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Import our Toss components
 import { TossCard } from '@/components/ui/TossCard';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossText } from '@/components/ui/TossText';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
-
-// Import survey service
-import SurveyService from '@/services/surveyService';
-
-interface DailyAnswer {
-  id: string;
-  date: string;
-  question: string;
-  answer: string;
-  type: 'emoji' | 'slider' | 'yesno' | 'image';
-}
+import SurveyService, { UserResponse } from '@/services/surveyService';
+import UserService from '@/services/userService';
 
 interface AnswerGroup {
   date: string;
-  answers: DailyAnswer[];
+  responses: UserResponse[];
 }
 
 export default function MyAnswersScreen() {
   const router = useRouter();
   const [answerGroups, setAnswerGroups] = useState<AnswerGroup[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const blurActiveElement = () => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const el = (document.activeElement as any);
+      if (el && typeof el.blur === 'function') el.blur();
+    }
+  };
 
   useEffect(() => {
     loadAnswerGroups();
@@ -44,26 +42,54 @@ export default function MyAnswersScreen() {
   const loadAnswerGroups = async () => {
     try {
       setLoading(true);
-      const groups = await SurveyService.getAnswerGroups();
+      const currentUser = await UserService.getCurrentUser();
+      if (!currentUser) {
+        console.error('사용자 정보를 찾을 수 없습니다.');
+        return;
+      }
+
+      const userId = parseInt(currentUser.id, 10);
+      if (isNaN(userId)) {
+        console.error('유효하지 않은 사용자 ID:', currentUser.id);
+        return;
+      }
+
+      const responseData = await SurveyService.getUserResponses(userId);
+      
+      // 날짜별로 그룹화
+      const groupedByDate = responseData.responses.reduce((acc, response) => {
+        if (!response.submittedAt) return acc;
+        const date = response.submittedAt.split('T')[0];
+        if (!acc[date]) acc[date] = [] as UserResponse[];
+        acc[date].push(response);
+        return acc;
+      }, {} as Record<string, UserResponse[]>);
+
+      // 날짜순 정렬 (최신순)
+      const groups = Object.entries(groupedByDate)
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([date, responses]) => ({ date, responses }));
+
       setAnswerGroups(groups);
     } catch (error) {
-      console.error('답변 그룹 로드 실패:', error);
+      console.error('Failed to load answer groups:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleBack = () => {
+    blurActiveElement();
     router.back();
   };
 
   const handleDatePress = (answerGroup: AnswerGroup) => {
-    // 모달로 상세 답변 보기
+    blurActiveElement();
     router.push({
       pathname: '/answer-detail',
       params: { 
         date: answerGroup.date,
-        answers: JSON.stringify(answerGroup.answers)
+        responses: JSON.stringify(answerGroup.responses)
       }
     });
   };
@@ -73,13 +99,11 @@ export default function MyAnswersScreen() {
       <TossCard style={styles.dateCard}>
         <View style={styles.dateContainer}>
           <TossText variant="title3" color="textPrimary" style={styles.dateText}>
-              {item.date}
+            {item.date}
           </TossText>
-          <View style={styles.dateHeader}>
-            <TossText variant="caption2" color="textTertiary" style={styles.answerCount}>
-              {item.answers.length}개 답변
-            </TossText>
-          </View>
+          <TossText variant="caption2" color="textTertiary" style={styles.answerCount}>
+            {item.responses.length}개 답변
+          </TossText>
           <Text style={styles.arrow}>›</Text>
         </View>
       </TossCard>
@@ -104,7 +128,6 @@ export default function MyAnswersScreen() {
         <StatusBar style="dark" backgroundColor={TossColors.background} />
         <TossHeader
           title="내 답변"
-          subtitle=""
           showBackButton={true}
           onBackPress={handleBack}
         />
@@ -120,11 +143,8 @@ export default function MyAnswersScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" backgroundColor={TossColors.background} />
-      
-      {/* 상단 헤더 */}
       <TossHeader
         title="내 답변"
-        subtitle=""
         showBackButton={true}
         onBackPress={handleBack}
       />
@@ -164,15 +184,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  dateHeader: { 
-    paddingHorizontal: TossSpacing.md,
-  },
   dateText: {
     flex: 1,
     fontWeight: '600',
   },
   answerCount: {
     fontSize: 12,
+    paddingHorizontal: TossSpacing.md,
   },
   previewContainer: {
     marginBottom: TossSpacing.sm,

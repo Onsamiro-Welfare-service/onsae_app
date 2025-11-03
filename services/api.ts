@@ -1,14 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+
+import { API_BASE_URL } from '@/constants/config';
+
 const BASE_URL = Platform.select({
-  // iOS simulator can use localhost
-  ios: 'http://localhost:8080',
-  // Android emulator needs host loopback address
-  // android: 'http://10.0.2.2:8080',
-  android: 'http://192.168.0.3:8080',
-  // Web or others fallback
-  default: 'http://localhost:8080',
+  ios: API_BASE_URL,
+  android: API_BASE_URL,
+  default: API_BASE_URL,
 }) as string;
 
 export interface ApiOptions {
@@ -38,9 +37,22 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   const text = await res.text();
   const isJson = (res.headers.get('content-type') || '').includes('application/json');
   const data = (isJson && text) ? JSON.parse(text) : (undefined as unknown as T);
-
+  console.log('res',res);
   if (!res.ok) {
-    const message = (data as any)?.message || res.statusText || 'Request failed';
+    // 400~500 에러 처리
+    let message = res.statusText || 'Request failed';
+    if (res.status >= 400 && res.status < 600) {
+      const errorData = data as any;
+      if (errorData?.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+        // errors[0]의 message를 추출
+        message = errorData.errors[0].message || errorData.errors[0] || message;
+      } else if (errorData?.message) {
+        message = errorData.message;
+      }
+      // TossAlert 메시지 표시
+      console.log('message',message);
+
+    }
     throw new Error(message);
   }
 

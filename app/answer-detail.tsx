@@ -2,9 +2,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import {
-  ScrollView,
-  StyleSheet,
-  View
+    Platform,
+    ScrollView,
+    StyleSheet,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,62 +14,98 @@ import { TossCard } from '@/components/ui/TossCard';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossText } from '@/components/ui/TossText';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
-
-interface DailyAnswer {
-  id: string;
-  date: string;
-  question: string;
-  answer: string;
-  type: 'emoji' | 'slider' | 'yesno' | 'image';
-}
+import { UserResponse } from '@/services/surveyService';
 
 export default function AnswerDetailScreen() {
   const router = useRouter();
-  const { date, answers } = useLocalSearchParams();
+  const { date, responses } = useLocalSearchParams();
+  const blurActiveElement = () => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const el = (document.activeElement as any);
+      if (el && typeof el.blur === 'function') el.blur();
+    }
+  };
   
-  let answerList: DailyAnswer[] = [];
-  if (answers) {
+  let responseList: UserResponse[] = [];
+  if (responses) {
     try {
-      answerList = JSON.parse(answers as string) as DailyAnswer[];
+      responseList = JSON.parse(responses as string) as UserResponse[];
     } catch (err) {
-      console.warn('answer-detail: failed to parse answers param', err);
-      answerList = [];
+      console.warn('answer-detail: failed to parse responses param', err);
+      responseList = [];
     }
   }
 
   const handleBack = () => {
-    router.replace('/my-answers');
+    blurActiveElement();
+    // router.replace('/my-answers');
+    router.back();
   };
 
-  const renderAnswerItem = (answer: DailyAnswer, index: number) => (
-    <TossCard key={answer.id} style={styles.answerCard}>
-      <View style={styles.questionContainer}>
-        <View style={styles.questionHeader}>
+  // 응답 내용을 표시하기 위한 유틸리티 함수
+  const formatAnswer = (response: UserResponse): string => {
+    const responseData = response.responseData;
+    if (!responseData) return '';
+
+    switch (response.questionType) {
+      case 'TEXT':
+        return String(responseData.answer || '');
+      case 'SCALE':
+        return String(responseData.answer || '');
+      case 'YES_NO':
+        return responseData.answer ? '예' : '아니오';
+      case 'DATE':
+        return String(responseData.answer || '');
+      case 'TIME':
+        return String(responseData.answer || '');
+      case 'SINGLE_CHOICE':
+        if (responseData.answer === 'other') {
+          return responseData.otherText || '';
+        }
+        return String(responseData.answer || '');
+      case 'MULTIPLE_CHOICE':
+        if (responseData.answers && Array.isArray(responseData.answers)) {
+          return responseData.answers
+            .map((ans: string) => {
+              if (ans === 'other') {
+                return responseData.otherText || '';
+              }
+              return ans;
+            })
+            .join(', ');
+        }
+        return String(responseData.answer || '');
+      default:
+        return '';
+    }
+  };
+
+  const renderAnswerItem = (response: UserResponse, index: number) => {
+    return (
+      <TossCard key={response.responseId} style={styles.answerCard}>
+        <View style={styles.questionContainer}>
           <TossText variant="caption2" color="textTertiary" style={styles.questionNumber}>
             {index + 1}
           </TossText>
+          <TossText variant="body1" color="textPrimary" style={styles.questionText}>
+            {response.questionTitle}
+          </TossText>
         </View>
-        
-        <TossText variant="body1" color="textPrimary" style={styles.questionText}>
-          {answer.question}
-        </TossText>
-      </View>
-      <View style={styles.answerContainer}>
-        <TossText variant="body2" color="textSecondary" style={styles.answerText}>
-          {answer.answer}
-        </TossText>
-      </View>
-    </TossCard>
-  );
+        <View style={styles.answerContainer}>
+          <TossText variant="body2" color="textSecondary" style={styles.answerText}>
+            {formatAnswer(response)}
+          </TossText>
+        </View>
+      </TossCard>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" backgroundColor={TossColors.background} />
       
-      {/* ?�단 ?�더 */}
       <TossHeader
         title={date as string}
-        subtitle=""
         showBackButton={true}
         onBackPress={handleBack}
       />
@@ -78,9 +115,7 @@ export default function AnswerDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {answerList.map((answer, index) => renderAnswerItem(answer, index))}
-        
-        <View style={styles.bottomSpacing} />
+        {responseList.map((response, index) => renderAnswerItem(response, index))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -107,12 +142,10 @@ const styles = StyleSheet.create({
     marginBottom: TossSpacing.sm,
     gap: TossSpacing.sm,
   },
-  questionHeader: {
-    
-  },
   questionNumber: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
+    marginRight: TossSpacing.sm,
   },
   questionText: {
     fontWeight: '600',

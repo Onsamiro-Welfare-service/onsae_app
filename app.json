@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "온새",
+    "name": "온새미로",
     "slug": "onsae-app",
-    "version": "1.0.0",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "onsaeapp",
@@ -10,6 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
+      ,
+      "entitlements": {
+        "com.apple.developer.healthkit": true
+      },
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "온새미로 앱은 사용자의 명시적 동의하에 HealthKit(Apple Health)과 연동하여 생활·건강 관련 일부 정보를 처리할 수 있습니다. 이 데이터는 비의료(non-medical) 용도로만 사용되며, 의료 진단이나 치료 목적으로 사용되지 않습니다.",
+        "NSHealthUpdateUsageDescription": "온새미로 앱은 사용자의 명시적 동의가 있는 경우에만 HealthKit에 정보를 기록하거나 업데이트할 수 있습니다. 앱은 사용자의 동의 없이 Health 데이터에 접근하거나 전송하지 않습니다."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +27,9 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.onsaemiro",
+      "versionCode": 24
     },
     "web": {
       "output": "static",
@@ -38,11 +48,25 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "default"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4c6d80db-c75a-4451-843a-fdb14cda7d67"
+      }
     }
   }
 }

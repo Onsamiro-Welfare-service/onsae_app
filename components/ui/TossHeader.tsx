@@ -1,4 +1,5 @@
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
   StyleSheet,
@@ -39,8 +40,7 @@ export function TossHeader({
       <View style={styles.leftSection}>
         {showBackButton ? (
           <TouchableOpacity onPress={onBackPress} style={styles.backButton}>
-            {/* 이모지 아이콘 사용 */}
-            <TossText style={styles.backIcon}>←</TossText>
+            <Ionicons name="chevron-back" size={24} color={TossColors.textPrimary} />
           </TouchableOpacity>
         ) : leftIcon ? (
           <TouchableOpacity onPress={onLeftPress} style={styles.iconButton}>
@@ -160,3 +160,4 @@ const styles = StyleSheet.create({
     height: 32,
   },
 });
+

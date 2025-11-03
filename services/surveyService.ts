@@ -73,6 +73,42 @@ export interface SurveyResponse {
   message?: string;
 }
 
+// 사용자 응답 조회 API 타입
+export interface UserResponse {
+  responseId: number;
+  assignmentId: number;
+  questionId: number;
+  questionTitle: string;
+  questionContent: string;
+  questionType: QuestionType;
+  userId: number;
+  userName: string;
+  responseData: {
+    note: string | null;
+    answer: string | boolean | number | null;
+    otherText?: string | null;
+    answers?: string[];
+    questionId: number;
+  };
+  responseText: string | null;
+  otherResponse: string | null;
+  responseTimeSeconds: number | null;
+  submittedAt: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  deviceInfo: string | null;
+  isModified: boolean;
+  modificationCount: number;
+}
+
+export interface UserResponsesResponse {
+  userId: number;
+  userName: string;
+  totalResponses: number;
+  latestResponseAt: string;
+  responses: UserResponse[];
+}
+
 class SurveyService {
   // 오늘 문진 완료 여부 확인 (pending API 사용)
   static async isTodaySurveyCompleted(): Promise<boolean> {
@@ -89,11 +125,33 @@ class SurveyService {
   // 서버에서 질문 목록 가져오기
   static async getSurveyQuestions(): Promise<ServerQuestion[]> {
     try {
-      const data = await get<ServerQuestion[]>('/api/user/questions');
+      const data = await get<ServerQuestion[]>('/api/user/questions/pending');
       const sorted = [...data].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
       return sorted;
     } catch (error) {
       console.error('설문 질문 로드 실패:', error);
+      throw error;
+    }
+  }
+
+  // 완료된 질문 목록 가져오기
+  static async getCompletedQuestions(): Promise<ServerQuestion[]> {
+    try {
+      const data = await get<ServerQuestion[]>('/api/user/questions/completed');
+      return data;
+    } catch (error) {
+      console.error('완료된 질문 로드 실패:', error);
+      throw error;
+    }
+  }
+
+  // 사용자 응답 조회
+  static async getUserResponses(userId: number): Promise<UserResponsesResponse> {
+    try {
+      const data = await get<UserResponsesResponse>(`/api/responses/user/${userId}`);
+      return data;
+    } catch (error) {
+      console.error('사용자 응답 로드 실패:', error);
       throw error;
     }
   }

@@ -453,14 +453,8 @@ export default function SurveyScreen() {
         const handleTimePress = () => {
           // 현재 선택된 시간이 있으면 파싱, 없으면 기본값(09:00)으로 설정
           let initialTime = new Date();
-          initialTime.setHours(9, 0, 0, 0); // 기본값 09:00
-          
-          if (current) {
-            const [hour, minute] = current.split(':').map(Number);
-            if (!isNaN(hour) && !isNaN(minute)) {
-              initialTime.setHours(hour, minute, 0, 0);
-            }
-          }
+          // 현재 시간으로 설정
+          initialTime.setHours(initialTime.getHours(), initialTime.getMinutes(), 0, 0);
           setSelectedTime(initialTime);
           setCurrentTimeQuestionId(question.assignmentId);
           setTimeModalVisible(true);

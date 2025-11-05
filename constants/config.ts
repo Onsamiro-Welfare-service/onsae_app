@@ -8,8 +8,8 @@ export const getApiUrl = () => {
 
   // __DEV__ 체크로 개발/프로덕션 구분
   if (__DEV__) {
-    return 'https://api.onsaemiro.site';
-    // return 'https://onsaeapi.topazkang.com';
+    return 'http://localhost:8080';
+    // return 'api.onsaemiro.site';
   }
 
   // 프로덕션 기본값 (배포 시 실제 서버 URL로 변경)

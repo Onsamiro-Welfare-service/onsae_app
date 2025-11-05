@@ -2,7 +2,7 @@
   "expo": {
     "name": "온새미로",
     "slug": "onsae-app",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "onsaeapp",
@@ -29,7 +29,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.onsaemiro",
-      "versionCode": 24
+      "versionCode": 25
     },
     "web": {
       "output": "static",

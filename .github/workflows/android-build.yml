@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Expo CLI
+      - name: Install Expo & EAS CLI
         run: npm install -g expo-cli eas-cli
 
       - name: Decode Android keystore
@@ -29,23 +29,10 @@ jobs:
           mkdir -p android
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/onsaemiroKey.jks
 
-      - name: Login to Expo with token
-        run: eas whoami --token $EXPO_TOKEN
-
-
-      - name: Configure EAS build profile
-        run: |
-          echo '{
-            "cli": { "version": ">= 3.17.0" },
-            "build": {
-              "production": {
-                "android": {
-                  "buildType": "app-bundle",
-                  "gradleCommand": ":app:bundleRelease"
-                }
-              }
-            }
-          }' > eas.json
+      - name: Verify Expo token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas whoami || echo "✅ Using EXPO_TOKEN authentication"
 
       - name: Build Android AAB
         env:

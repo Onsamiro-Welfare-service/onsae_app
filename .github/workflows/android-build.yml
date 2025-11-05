@@ -29,8 +29,9 @@ jobs:
           mkdir -p android
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/onsaemiroKey.jks
 
-      - name: Login to Expo
-        run: eas whoami || eas login --token $EXPO_TOKEN
+      - name: Login to Expo with token
+        run: eas whoami --token $EXPO_TOKEN
+
 
       - name: Configure EAS build profile
         run: |

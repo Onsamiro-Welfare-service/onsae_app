@@ -47,4 +47,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-aab
-          path: dist/*.aab
+          path: build-*.aab
+
+      - name: Upload to Google Play Internal Test
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          packageName: com.onsaemiro 
+          releaseFiles: /home/runner/work/onsae_app/onsae_app/build-*.aab
+          track: internal

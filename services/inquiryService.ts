@@ -1,243 +1,402 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@/constants/config';
+import { get, postFormData } from '@/services/api';
 
-// 문의하기 타입 정의
-export interface Inquiry {
-  id: string;
-  message: string;
-  imageUri?: string;
-  timestamp: number;
-  status: 'pending' | 'sent' | 'replied';
-  reply?: string;
-  replyTimestamp?: number;
+/**
+ * 파일 타입 열거형
+ * 서버에서 반환하는 파일 타입을 나타냅니다.
+ */
+export type FileType = 'IMAGE' | 'AUDIO' | 'VIDEO' | 'DOCUMENT' | 'TEXT';
+
+/**
+ * 업로드된 파일 정보 인터페이스
+ * 서버에서 반환하는 파일 상세 정보를 나타냅니다.
+ */
+export interface UploadFile {
+  /** 파일 ID */
+  id: number;
+  /** 파일 타입 (IMAGE, AUDIO, VIDEO, DOCUMENT, TEXT) */
+  fileType: FileType;
+  /** 저장된 파일명 */
+  fileName: string;
+  /** 원본 파일명 */
+  originalName: string;
+  /** 파일 경로 */
+  filePath: string;
+  /** 파일 크기 (바이트) */
+  fileSize: number;
+  /** MIME 타입 */
+  mimeType: string;
+  /** 재생 시간 (초, 음성/비디오 파일의 경우) */
+  durationSeconds: number | null;
+  /** 이미지 너비 (이미지 파일의 경우) */
+  imageWidth: number | null;
+  /** 이미지 높이 (이미지 파일의 경우) */
+  imageHeight: number | null;
+  /** 썸네일 경로 */
+  thumbnailPath: string | null;
+  /** 업로드 순서 */
+  uploadOrder: number;
+  /** 생성일시 */
+  createdAt: string;
 }
 
-export interface InquiryResponse {
+/**
+ * 업로드 상세 응답 인터페이스
+ * 서버에서 반환하는 전체 업로드 정보를 나타냅니다.
+ */
+export interface UploadDetailResponse {
+  /** 업로드 ID */
+  id: number;
+  /** 제목 (선택사항, 최대 200자) */
+  title: string | null;
+  /** 내용 (선택사항) */
+  content: string | null;
+  /** 사용자 ID */
+  userId: number;
+  /** 사용자 이름 */
+  userName: string;
+  /** 기관 ID */
+  institutionId: number;
+  /** 기관 이름 */
+  institutionName: string;
+  /** 관리자 읽음 여부 */
+  adminRead: boolean;
+  /** 관리자 답변 내용 */
+  adminResponse: string | null;
+  /** 관리자 답변 일시 */
+  adminResponseDate: string | null;
+  /** 관리자 ID */
+  adminId: number | null;
+  /** 관리자 이름 */
+  adminName: string | null;
+  /** 업로드된 파일 목록 */
+  files: UploadFile[];
+  /** 생성일시 */
+  createdAt: string;
+  /** 수정일시 */
+  updatedAt: string;
+}
+
+/**
+ * 업로드 목록 항목 인터페이스
+ * 목록 조회 시 반환되는 요약 정보를 나타냅니다.
+ */
+export interface UploadListItem {
+  /** 업로드 ID */
+  id: number;
+  /** 제목 (선택사항) */
+  title: string | null;
+  /** 내용 미리보기 (일부만 표시) */
+  contentPreview: string | null;
+  /** 사용자 ID */
+  userId: number;
+  /** 사용자 이름 */
+  userName: string;
+  /** 기관 ID */
+  institutionId: number;
+  /** 기관 이름 */
+  institutionName: string;
+  /** 관리자 읽음 여부 */
+  adminRead: boolean;
+  /** 관리자 답변 일시 */
+  adminResponseDate: string | null;
+  /** 파일 개수 */
+  fileCount: number;
+  /** 첫 번째 파일 타입 */
+  firstFileType: FileType | null;
+  /** 생성일시 */
+  createdAt: string;
+}
+
+/**
+ * 파일 업로드 요청 인터페이스
+ * 업로드 시 전송할 데이터를 나타냅니다.
+ */
+export interface UploadRequest {
+  /** 제목 (선택사항, 최대 200자) */
+  title?: string;
+  /** 내용 (선택사항) */
+  content?: string;
+  /** 업로드할 파일 URI 목록 */
+  files: string[];
+}
+
+/**
+ * 파일 업로드 응답 인터페이스
+ * 업로드 성공 시 반환되는 응답을 나타냅니다.
+ */
+export interface UploadResponse {
   success: boolean;
-  inquiry?: Inquiry;
+  upload?: UploadDetailResponse;
   message?: string;
 }
 
-export interface InquiryListResponse {
+/**
+ * 업로드 목록 조회 응답 인터페이스
+ */
+export interface UploadListResponse {
   success: boolean;
-  inquiries?: Inquiry[];
+  uploads?: UploadListItem[];
   message?: string;
 }
 
+/**
+ * 업로드 상세 조회 응답 인터페이스
+ */
+export interface UploadDetailResponseType {
+  success: boolean;
+  upload?: UploadDetailResponse;
+  message?: string;
+}
+
+/**
+ * 문의하기 서비스 클래스
+ * 파일 업로드 및 문의 조회 기능을 제공합니다.
+ */
 class InquiryService {
-  // AsyncStorage 키
-  private static readonly INQUIRIES_KEY = '@inquiries';
+  /** API 엔드포인트 경로 */
+  private static readonly UPLOADS_ENDPOINT = '/api/user/uploads';
 
-  // 문의하기 전송 (더미)
-  static async sendInquiry(message: string, imageUri?: string): Promise<InquiryResponse> {
-    return new Promise((resolve) => {
-      // API 호출 시뮬레이션 (1초 딜레이)
-      setTimeout(() => {
-        const newInquiry: Inquiry = {
-          id: `inquiry_${Date.now()}`,
-          message: message.trim(),
-          imageUri,
-          timestamp: Date.now(),
-          status: 'sent',
-        };
-
-        // 로컬 저장
-        this.saveInquiry(newInquiry);
-
-        resolve({
-          success: true,
-          inquiry: newInquiry,
-          message: '문의사항이 성공적으로 전송되었습니다.',
-        });
-      }, 1000);
-    });
-  }
-
-  // 문의하기 목록 가져오기
-  static async getInquiries(): Promise<InquiryListResponse> {
-    return new Promise((resolve) => {
-      // API 호출 시뮬레이션 (0.5초 딜레이)
-      setTimeout(async () => {
-        try {
-          const inquiries = await this.getLocalInquiries();
-          resolve({
-            success: true,
-            inquiries: inquiries.sort((a, b) => b.timestamp - a.timestamp),
-          });
-        } catch (error) {
-          resolve({
-            success: false,
-            message: '문의 목록을 불러오는데 실패했습니다.',
-          });
-        }
-      }, 500);
-    });
-  }
-
-  // 특정 문의하기 상세 정보 가져오기
-  static async getInquiryById(id: string): Promise<InquiryResponse> {
-    return new Promise(async (resolve) => {
-      try {
-        const inquiries = await this.getLocalInquiries();
-        const inquiry = inquiries.find(i => i.id === id);
-        
-        if (inquiry) {
-          resolve({
-            success: true,
-            inquiry,
-          });
-        } else {
-          resolve({
-            success: false,
-            message: '문의사항을 찾을 수 없습니다.',
-          });
-        }
-      } catch (error) {
-        resolve({
-          success: false,
-          message: '문의사항을 불러오는데 실패했습니다.',
-        });
-      }
-    });
-  }
-
-  // 문의하기 상태 업데이트 (답변 받았을 때)
-  static async updateInquiryStatus(id: string, status: Inquiry['status'], reply?: string): Promise<InquiryResponse> {
-    return new Promise(async (resolve) => {
-      try {
-        const inquiries = await this.getLocalInquiries();
-        const inquiryIndex = inquiries.findIndex(i => i.id === id);
-        
-        if (inquiryIndex >= 0) {
-          inquiries[inquiryIndex] = {
-            ...inquiries[inquiryIndex],
-            status,
-            reply,
-            replyTimestamp: reply ? Date.now() : undefined,
-          };
-
-          await AsyncStorage.setItem(this.INQUIRIES_KEY, JSON.stringify(inquiries));
-          
-          resolve({
-            success: true,
-            inquiry: inquiries[inquiryIndex],
-            message: '문의사항 상태가 업데이트되었습니다.',
-          });
-        } else {
-          resolve({
-            success: false,
-            message: '문의사항을 찾을 수 없습니다.',
-          });
-        }
-      } catch (error) {
-        resolve({
-          success: false,
-          message: '문의사항 업데이트에 실패했습니다.',
-        });
-      }
-    });
-  }
-
-  // 문의하기 통계 가져오기
-  static async getInquiryStats(): Promise<{
-    totalInquiries: number;
-    pendingInquiries: number;
-    repliedInquiries: number;
-  }> {
+  /**
+   * 파일 업로드 (문의하기 전송)
+   * 
+   * @param request 업로드 요청 데이터 (제목, 내용, 파일 목록)
+   * @returns 업로드 성공 여부 및 업로드 정보
+   * 
+   * @throws {Error} 파일이 없거나, 파일 타입 오류, 파일 크기 초과 등의 경우
+   * 
+   * 예시:
+   * ```typescript
+   * const response = await InquiryService.uploadFiles({
+   *   title: '건강검진 결과지',
+   *   content: '2024년 건강검진 결과지를 업로드합니다.',
+   *   files: ['file:///path/to/image.jpg']
+   * });
+   * ```
+   */
+  static async uploadFiles(request: UploadRequest): Promise<UploadResponse> {
     try {
-      const inquiries = await this.getLocalInquiries();
+      // 파일이 없는 경우 에러
+      // if (!request.files || request.files.length === 0) {
+      //   return {
+      //     success: false,
+      //     message: '파일을 선택해주세요.',
+      //   };
+      // }
+
+      // FormData 생성
+      const formData = new FormData();
+
+      // 제목 추가 (있는 경우)
+      if (request.title && request.title.trim()) {
+        formData.append('title', request.title.trim());
+      }
+
+      // 내용 추가 (있는 경우)
+      if (request.content && request.content.trim()) {
+        formData.append('content', request.content.trim());
+      }
+
+      // 파일 추가
+      // React Native에서는 파일 URI를 사용하여 파일을 추가합니다.
+      // 파일명 추출을 위한 로직
+      request.files.forEach((fileUri, index) => {
+        // URI에서 파일명 추출 (예: file:///path/to/image.jpg -> image.jpg)
+        const fileName = fileUri.split('/').pop() || `file_${index}`;
+        // 파일 확장자로부터 타입 추정
+        const fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
+        
+        // 파일 타입 결정
+        let mimeType = 'application/octet-stream';
+        
+        // 이미지 파일
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+          mimeType = `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`;
+        }
+        // 음성 파일
+        else if (['mp3', 'wav', 'm4a', 'aac'].includes(fileExtension)) {
+          mimeType = `audio/${fileExtension}`;
+        }
+        // 비디오 파일
+        else if (['mp4', 'avi', 'mov', 'mkv'].includes(fileExtension)) {
+          mimeType = `video/${fileExtension}`;
+        }
+        // 문서 파일
+        else if (['pdf', 'doc', 'docx', 'xls', 'xlsx'].includes(fileExtension)) {
+          if (fileExtension === 'pdf') mimeType = 'application/pdf';
+          else if (['doc', 'docx'].includes(fileExtension)) mimeType = 'application/msword';
+          else if (['xls', 'xlsx'].includes(fileExtension)) mimeType = 'application/vnd.ms-excel';
+        }
+        // 텍스트 파일
+        else if (['txt', 'md'].includes(fileExtension)) {
+          mimeType = 'text/plain';
+        }
+
+        // React Native에서는 파일을 추가할 때 uri, type, name을 지정합니다.
+        formData.append('files', {
+          uri: fileUri,
+          type: mimeType,
+          name: fileName,
+        } as any);
+      });
+
+      // API 호출
+      const response = await postFormData<UploadDetailResponse>(
+        this.UPLOADS_ENDPOINT,
+        formData
+      );
+
+      return {
+        success: true,
+        upload: response,
+        message: '문의사항이 성공적으로 전송되었습니다.',
+      };
+    } catch (error: any) {
+      console.error('파일 업로드 실패:', error);
       
+      // 에러 메시지 처리
+      let errorMessage = '문의 전송에 실패했습니다.';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
       return {
-        totalInquiries: inquiries.length,
-        pendingInquiries: inquiries.filter(i => i.status === 'pending').length,
-        repliedInquiries: inquiries.filter(i => i.status === 'replied').length,
+        success: false,
+        message: errorMessage,
       };
-    } catch (error) {
-      console.error('문의 통계 가져오기 실패:', error);
+    }
+  }
+
+  /**
+   * 내 업로드 목록 조회
+   * 현재 로그인한 사용자의 모든 업로드 목록을 가져옵니다.
+   * 
+   * @returns 업로드 목록 조회 성공 여부 및 업로드 목록
+   * 
+   * 예시:
+   * ```typescript
+   * const response = await InquiryService.getUploadList();
+   * if (response.success && response.uploads) {
+   *   response.uploads.forEach(upload => {
+   *     console.log(upload.title, upload.file_count);
+   *   });
+   * }
+   * ```
+   */
+  static async getUploadList(): Promise<UploadListResponse> {
+    try {
+      const uploads = await get<UploadListItem[]>(this.UPLOADS_ENDPOINT);
+
       return {
-        totalInquiries: 0,
-        pendingInquiries: 0,
-        repliedInquiries: 0,
+        success: true,
+        uploads: uploads.sort((a, b) => {
+          // 최신순 정렬 (created_at 내림차순)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }),
+      };
+    } catch (error: any) {
+      console.error('업로드 목록 조회 실패:', error);
+      
+      let errorMessage = '문의 목록을 불러오는데 실패했습니다.';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
+      return {
+        success: false,
+        message: errorMessage,
       };
     }
   }
 
-  // 로컬 문의하기 목록 가져오기
-  private static async getLocalInquiries(): Promise<Inquiry[]> {
+  /**
+   * 업로드 상세 조회
+   * 특정 업로드의 상세 정보를 가져옵니다.
+   * 
+   * @param uploadId 업로드 ID
+   * @returns 업로드 상세 조회 성공 여부 및 업로드 상세 정보
+   * 
+   * @throws {Error} 권한 부족 또는 업로드를 찾을 수 없는 경우
+   * 
+   * 예시:
+   * ```typescript
+   * const response = await InquiryService.getUploadDetail(1);
+   * if (response.success && response.upload) {
+   *   console.log(response.upload.title);
+   *   console.log(response.upload.files);
+   *   console.log(response.upload.adminResponse);
+   * }
+   * ```
+   */
+  static async getUploadDetail(uploadId: number): Promise<UploadDetailResponseType> {
     try {
-      const inquiriesString = await AsyncStorage.getItem(this.INQUIRIES_KEY);
-      return inquiriesString ? JSON.parse(inquiriesString) : [];
-    } catch (error) {
-      console.error('로컬 문의 목록 가져오기 실패:', error);
-      return [];
+      const upload = await get<UploadDetailResponse>(`${this.UPLOADS_ENDPOINT}/${uploadId}`);
+
+      return {
+        success: true,
+        upload,
+      };
+    } catch (error: any) {
+      console.error('업로드 상세 조회 실패:', error);
+      
+      let errorMessage = '문의사항을 불러오는데 실패했습니다.';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
+      return {
+        success: false,
+        message: errorMessage,
+      };
     }
   }
 
-  // 문의하기 로컬 저장
-  private static async saveInquiry(inquiry: Inquiry): Promise<void> {
-    try {
-      const inquiries = await this.getLocalInquiries();
-      inquiries.unshift(inquiry);
-      await AsyncStorage.setItem(this.INQUIRIES_KEY, JSON.stringify(inquiries));
-    } catch (error) {
-      console.error('문의 저장 실패:', error);
-    }
+  /**
+   * 파일 URL 가져오기
+   * 파일 ID를 기반으로 파일에 접근할 수 있는 URL을 생성합니다.
+   * 
+   * @param fileId 파일 ID
+   * @returns 파일 URL
+   * 
+   * 예시:
+   * ```typescript
+   * const imageUrl = InquiryService.getFileUrl(123);
+   * // 결과: "https://api.onsaemiro.site/api/files/123"
+   * ```
+   */
+  static getFileUrl(fileId: number): string {
+    return `${API_BASE_URL}/api/files/${fileId}`;
   }
 
-  // 문의하기 데이터 초기화 (개발용)
-  static async clearInquiryData(): Promise<void> {
-    try {
-      await AsyncStorage.removeItem(this.INQUIRIES_KEY);
-    } catch (error) {
-      console.error('문의 데이터 초기화 실패:', error);
+  /**
+   * 기존 호환성을 위한 메서드 (문의하기 전송)
+   * 
+   * @deprecated uploadFiles를 사용하세요.
+   * @param message 문의 내용
+   * @param imageUri 이미지 URI (선택사항)
+   * @returns 업로드 성공 여부
+   */
+  static async sendInquiry(message: string, imageUri?: string): Promise<UploadResponse> {
+    const files: string[] = [];
+    
+    if (imageUri) {
+      files.push(imageUri);
     }
-  }
 
-  // 더미 데이터 초기화 (개발용)
-  static async initializeDummyData(): Promise<void> {
-    try {
-      const now = Date.now();
-      const oneDayAgo = now - (24 * 60 * 60 * 1000);
-      const twoDaysAgo = now - (2 * 24 * 60 * 60 * 1000);
-      const threeDaysAgo = now - (3 * 24 * 60 * 60 * 1000);
-
-      const dummyInquiries: Inquiry[] = [
-        {
-          id: 'inquiry_1',
-          message: '오늘 문진에서 약 복용 관련 질문이 있었는데, 복용 시간을 정확히 지켜야 하나요?',
-          timestamp: now,
-          status: 'replied',
-          reply: '네, 약 복용 시간을 정확히 지키는 것이 중요합니다. 의사와 상담하신 복용 시간을 지켜주세요.',
-          replyTimestamp: now - (2 * 60 * 60 * 1000), // 2시간 전
-        },
-        {
-          id: 'inquiry_2',
-          message: '몸 상태가 좋지 않을 때는 어떻게 해야 할까요?',
-          timestamp: oneDayAgo,
-          status: 'replied',
-          reply: '몸 상태가 좋지 않을 때는 충분한 휴식을 취하고, 증상이 지속되면 의료진에게 연락하시기 바랍니다.',
-          replyTimestamp: oneDayAgo + (30 * 60 * 1000), // 30분 후
-        },
-        {
-          id: 'inquiry_3',
-          message: '문진 앱 사용법에 대해 궁금합니다.',
-          timestamp: twoDaysAgo,
-          status: 'sent',
-        },
-        {
-          id: 'inquiry_4',
-          message: '복지관 운영 시간이 어떻게 되나요?',
-          timestamp: threeDaysAgo,
-          status: 'replied',
-          reply: '복지관 운영 시간은 평일 오전 9시부터 오후 6시까지입니다. 주말에는 휴무입니다.',
-          replyTimestamp: threeDaysAgo + (1 * 60 * 60 * 1000), // 1시간 후
-        },
-      ];
-
-      await AsyncStorage.setItem(this.INQUIRIES_KEY, JSON.stringify(dummyInquiries));
-    } catch (error) {
-      console.error('더미 데이터 초기화 실패:', error);
-    }
+    return this.uploadFiles({
+      content: message,
+      files,
+    });
   }
 }
 
-export default InquiryService; 
+export default InquiryService;

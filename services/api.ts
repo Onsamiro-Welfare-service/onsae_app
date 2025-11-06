@@ -82,7 +82,28 @@ export async function post<TReq, TRes>(path: string, body: TReq, options?: ApiOp
   });
 }
 
+/**
+ * multipart/form-data로 파일 업로드를 수행하는 함수
+ * @param path API 엔드포인트 경로
+ * @param formData FormData 객체
+ * @param options 추가 옵션 (헤더 등)
+ * @returns API 응답 데이터
+ */
+export async function postFormData<TRes>(path: string, formData: FormData, options?: ApiOptions): Promise<TRes> {
+  const headers: Record<string, string> = {
+    // multipart/form-data일 때는 Content-Type을 명시하지 않음 (브라우저가 자동으로 boundary를 추가)
+    ...(options?.headers || {}),
+  };
+
+  return request<TRes>(path, {
+    method: 'POST',
+    headers,
+    body: formData as any,
+  });
+}
+
 export default {
   get,
   post,
+  postFormData,
 };

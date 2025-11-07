@@ -51,12 +51,69 @@ export default function InquiryCreateScreen() {
   };
 
   /**
-   * 이미지 선택 핸들러
-   * 갤러리에서 이미지를 선택합니다.
+   * 이미지 선택 옵션 표시
+   * 카메라 촬영 또는 갤러리에서 선택할 수 있는 옵션을 제공합니다.
    */
-  const handleImagePicker = async () => {
+  const handleImagePicker = () => {
+    Alert.alert(
+      '사진 추가',
+      '사진을 추가하는 방법을 선택해주세요.',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '카메라',
+          onPress: handleTakePhoto,
+        },
+        {
+          text: '갤러리',
+          onPress: handlePickFromGallery,
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  /**
+   * 카메라로 사진 촬영
+   */
+  const handleTakePhoto = async () => {
     try {
-      // 권한 요청
+      // 카메라 권한 요청
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('권한 필요', '카메라 접근 권한이 필요합니다.');
+        return;
+      }
+
+      // 카메라로 사진 촬영
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        // 촬영한 사진 추가
+        const newImages = result.assets.map(asset => asset.uri);
+        setSelectedImages(prev => [...prev, ...newImages]);
+      }
+    } catch (error) {
+      console.error('카메라 촬영 실패:', error);
+      Alert.alert('오류', '카메라를 사용하는 중 오류가 발생했습니다.');
+    }
+  };
+
+  /**
+   * 갤러리에서 이미지 선택
+   */
+  const handlePickFromGallery = async () => {
+    try {
+      // 갤러리 권한 요청
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (status !== 'granted') {
@@ -64,7 +121,7 @@ export default function InquiryCreateScreen() {
         return;
       }
 
-      // 이미지 선택
+      // 갤러리에서 이미지 선택
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -74,7 +131,7 @@ export default function InquiryCreateScreen() {
       });
 
       if (!result.canceled && result.assets) {
-        // 기존 이미지에 추가
+        // 선택한 이미지 추가
         const newImages = result.assets.map(asset => asset.uri);
         setSelectedImages(prev => [...prev, ...newImages]);
       }
@@ -197,12 +254,14 @@ export default function InquiryCreateScreen() {
               사진을 추가하려면 터치하세요
             </TossText>
             <TossText variant="caption3" color="textTertiary" style={styles.uploadHint}>
-              여러 장 선택 가능
+              카메라 촬영 또는 갤러리에서 선택 가능
             </TossText>
           </TouchableOpacity>
+        </TossCard>
 
-          {/* 선택된 이미지 목록 */}
-          {selectedImages.length > 0 && (
+        {/* 선택된 이미지 목록 카드 */}
+        {selectedImages.length > 0 && (
+          <TossCard style={styles.imageListCard} padding="md">
             <View style={styles.imageList}>
               {selectedImages.map((uri, index) => (
                 <View key={index} style={styles.imageItem}>
@@ -217,8 +276,8 @@ export default function InquiryCreateScreen() {
                 </View>
               ))}
             </View>
-          )}
-        </TossCard>
+          </TossCard>
+        )}
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -253,8 +312,8 @@ const styles = StyleSheet.create({
   },
   inputCard: {
     marginBottom: TossSpacing.lg,
-    paddingVertical: TossSpacing.lg,
-    paddingHorizontal: TossSpacing.md,
+    paddingVertical: TossSpacing.xs,
+    paddingHorizontal: TossSpacing.xs,
   },
   titleInput: {
     fontSize: 16,
@@ -277,6 +336,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: TossSpacing.xl,
   },
+  imageListCard: {
+    marginBottom: TossSpacing.lg,
+  },
   uploadButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -294,7 +356,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   imageList: {
-    marginTop: TossSpacing.lg,
     width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -315,7 +376,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: TossColors.error || '#FF4444',
+    backgroundColor: TossColors.danger,
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -338,7 +399,7 @@ const styles = StyleSheet.create({
     backgroundColor: TossColors.white,
     paddingTop: TossSpacing.md,
     borderTopWidth: 1,
-    borderTopColor: TossColors.border || '#F0F0F0',
+    borderTopColor: TossColors.gray200,
   },
   sendButton: {
     width: '100%',

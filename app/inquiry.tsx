@@ -210,7 +210,7 @@ export default function InquiryScreen() {
           아직 문의사항이 없습니다
         </TossText>
         <TossText variant="caption2" color="textTertiary" style={styles.emptySubText}>
-          오른쪽 상단의 + 버튼을 눌러 문의를 작성해보세요
+          화면 하단의 &apos;문의 작성하기&apos; 버튼을 눌러 문의를 작성해보세요
         </TossText>
       </View>
     );

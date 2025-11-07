@@ -7,7 +7,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -48,7 +48,7 @@ export default function InquiryScreen() {
       } else {
         setError(response.message || '문의 목록을 불러오는데 실패했습니다.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('문의 목록 로드 실패:', err);
       setError('문의 목록을 불러오는데 실패했습니다.');
     } finally {

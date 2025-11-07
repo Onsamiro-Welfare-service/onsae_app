@@ -3,15 +3,16 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    BackHandler,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  Animated,
+  AppState,
+  BackHandler,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -63,8 +64,25 @@ export default function HomeScreen() {
     }
   }, [rotateAnim]);
 
+  // 화면 포커스 시 문진 상태 확인
+  useFocusEffect(
+    useCallback(() => {
+      checkSurveyStatus();
+    }, [checkSurveyStatus])
+  );
+
+  // 앱이 백그라운드에서 포그라운드로 돌아올 때 문진 상태 재조회
   useEffect(() => {
-    checkSurveyStatus();
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        // 앱이 포그라운드로 돌아왔을 때 문진 상태 재조회
+        checkSurveyStatus();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, [checkSurveyStatus]);
 
   // Android 하드웨어 뒤로가기 처리: 이 페이지에서만 뒤로가기 시 종료 확인

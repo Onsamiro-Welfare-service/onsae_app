@@ -3,15 +3,15 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  BackHandler,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    Alert,
+    Animated,
+    BackHandler,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -115,8 +115,8 @@ export default function HomeScreen() {
       icon: '🏃‍♂️',
       title: '문의 하기',
       description: '언제든 빠르게 복지관에 문의해보세요',
-      onPress: () => {},
-      disabled: true,
+      onPress: () => router.push('/inquiry'),
+      disabled: false,
     },
     // {
     //   icon: '💚',

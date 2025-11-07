@@ -8,7 +8,7 @@ export const getApiUrl = () => {
 
   // __DEV__ 체크로 개발/프로덕션 구분
   if (__DEV__) {
-    return 'http://localhost:8080';
+    return 'http://192.168.0.3:8080';
     // return 'api.onsaemiro.site';
   }
 

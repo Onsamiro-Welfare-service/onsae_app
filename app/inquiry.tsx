@@ -1,16 +1,12 @@
-import { useFocusEffect } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
 import {
-  Alert,
-  Image,
-  ScrollView,
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,67 +19,202 @@ import { TossText } from '@/components/ui/TossText';
 import { TossColors, TossSpacing } from '@/constants/toss-design-system';
 
 // Import inquiry service
-import InquiryService from '@/services/inquiryService';
+import InquiryService, { UploadListItem } from '@/services/inquiryService';
 
 export default function InquiryScreen() {
   const router = useRouter();
-  const [message, setMessage] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [uploads, setUploads] = useState<UploadListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  /**
+   * 업로드 목록을 불러오는 함수
+   * @param isRefresh 새로고침 여부
+   */
+  const loadUploads = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const response = await InquiryService.getUploadList();
+
+      if (response.success && response.uploads) {
+        setUploads(response.uploads);
+      } else {
+        setError(response.message || '문의 목록을 불러오는데 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('문의 목록 로드 실패:', err);
+      setError('문의 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // 화면 포커스 시 목록 새로고침
   useFocusEffect(
     useCallback(() => {
-      setMessage('');
-      setSelectedImage(null);
-    }, [])
+      loadUploads();
+    }, [loadUploads])
   );
 
+  /**
+   * 뒤로가기 핸들러
+   */
   const handleBack = () => {
     router.back();
   };
 
-  const handleImagePicker = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
+  /**
+   * 문의 생성 화면으로 이동
+   */
+  const handleCreate = () => {
+    router.push('/inquiry-create');
+  };
 
-      if (!result.canceled) {
-        setSelectedImage(result.assets[0].uri);
-      }
-    } catch (error) {
-      Alert.alert('오류', '이미지를 선택하는 중 오류가 발생했습니다.');
+  /**
+   * 문의 상세 화면으로 이동
+   */
+  const handleItemPress = (uploadId: number) => {
+    // @ts-ignore - expo-router 타입 문제로 인한 임시 처리
+    router.push({
+      pathname: '/inquiry-detail',
+      params: { id: uploadId.toString() },
+    });
+  };
+
+  /**
+   * 날짜 포맷팅 함수
+   */
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (days === 0) {
+      // 오늘인 경우 시간만 표시
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    } else if (days === 1) {
+      return '어제';
+    } else if (days < 7) {
+      return `${days}일 전`;
+    } else {
+      // 한 주 이상인 경우 날짜 표시
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      return `${month}/${day}`;
     }
   };
 
-  const handleSend = async () => {
-    if (!message.trim()) {
-      Alert.alert('알림', '문의 내용을 입력해주세요.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await InquiryService.sendInquiry(message.trim(), selectedImage || undefined);
-      
-      if (response.success) {
-        // 전송 완료 페이지로 이동
-        router.replace('/inquiry-complete');
-      } else {
-        Alert.alert('오류', response.message || '문의 전송에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('문의 전송 실패:', error);
-      Alert.alert('오류', '문의 전송 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
+  /**
+   * 파일 타입 아이콘 반환
+   */
+  const getFileTypeIcon = (fileType: string | null): string => {
+    switch (fileType) {
+      case 'IMAGE':
+        return '🖼️';
+      case 'AUDIO':
+        return '🎵';
+      case 'VIDEO':
+        return '🎥';
+      case 'DOCUMENT':
+        return '📄';
+      case 'TEXT':
+        return '📝';
+      default:
+        return '📎';
     }
   };
 
-  const canSend = message.trim().length > 0 && !loading;
+  /**
+   * 업로드 목록 항목 렌더링
+   */
+  const renderUploadItem = ({ item }: { item: UploadListItem }) => {
+    const hasResponse = item.adminResponseDate !== null;
+
+    return (
+      <TossCard
+        style={styles.uploadCard}
+        onPress={() => handleItemPress(item.id)}
+      >
+        <View style={styles.uploadCardHeader}>
+          <View style={styles.uploadCardLeft}>
+            <Text style={styles.fileTypeIcon}>
+              {getFileTypeIcon(item.firstFileType)}
+            </Text>
+            <View style={styles.uploadCardInfo}>
+              <View style={styles.uploadCardTitleRow}>
+                <Text 
+                  style={styles.uploadCardTitle}
+                  numberOfLines={1}
+                >
+                  {item.title || '(제목 없음)'}
+                </Text>
+                {hasResponse && (
+                  <View style={styles.responseBadge}>
+                    <TossText variant="caption3" color="white">
+                      답변완료
+                    </TossText>
+                  </View>
+                )}
+              </View>
+              {item.contentPreview && (
+                <Text 
+                  style={styles.uploadCardPreview}
+                  numberOfLines={2}
+                >
+                  {item.contentPreview}
+                </Text>
+              )}
+              <View style={styles.uploadCardMeta}>
+                <TossText variant="caption3" color="textTertiary">
+                  {item.fileCount}개 파일 · {formatDate(item.createdAt)}
+                </TossText>
+              </View>
+            </View>
+          </View>
+          <Text style={styles.arrowIcon}>›</Text>
+        </View>
+      </TossCard>
+    );
+  };
+
+  /**
+   * 빈 목록 렌더링
+   */
+  const renderEmptyList = () => {
+    if (loading) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={TossColors.primary} />
+          <TossText variant="body2" color="textSecondary" style={styles.emptyText}>
+            문의 목록을 불러오는 중...
+          </TossText>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>📭</Text>
+        <TossText variant="body1" color="textSecondary" style={styles.emptyText}>
+          아직 문의사항이 없습니다
+        </TossText>
+        <TossText variant="caption2" color="textTertiary" style={styles.emptySubText}>
+          화면 하단의 &apos;문의 작성하기&apos; 버튼을 눌러 문의를 작성해보세요
+        </TossText>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,71 +222,50 @@ export default function InquiryScreen() {
       
       {/* 상단 헤더 */}
       <TossHeader
-        title="문의사항 보내기"
+        title="문의사항"
         subtitle=""
         showBackButton={true}
         onBackPress={handleBack}
       />
 
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 사진 업로드 카드 */}
-        <TossCard style={styles.uploadCard} padding="sm">
-          <TouchableOpacity 
-            style={styles.uploadButton}
-            onPress={handleImagePicker}
-            activeOpacity={0.7}
-            disabled={loading}
-          >
-            {selectedImage ? (
-              <Image source={{ uri: selectedImage }} style={styles.selectedImage} />
-            ) : (
-              <>
-                <Text style={styles.cameraIcon}>📷</Text>
-                <TossText variant="body2" color="textSecondary" style={styles.uploadText}>
-                  사진을 추가하려면 터치하세요
-                </TossText>
-              </>
-            )}
-          </TouchableOpacity>
-        </TossCard>
+      {/* 에러 메시지 */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <TossText variant="caption2" color="textSecondary">
+            {error}
+          </TossText>
+        </View>
+      )}
 
-        {/* 텍스트 입력 카드 */}
-        <TossCard style={styles.textInputCard}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="궁금한 것이 있으시면 자유롭게 적어주세요"
-            placeholderTextColor={TossColors.textTertiary}
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            textAlignVertical="top"
-            maxLength={500}
-            editable={!loading}
+      {/* 목록 */}
+      <FlatList
+        data={uploads}
+        renderItem={renderUploadItem}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={[
+          styles.listContent,
+          uploads.length === 0 && styles.listContentEmpty,
+        ]}
+        ListEmptyComponent={renderEmptyList}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadUploads(true)}
+            colors={[TossColors.primary]}
+            tintColor={TossColors.primary}
           />
-          <View style={styles.characterCount}>
-            <TossText variant="caption3" color="textTertiary">
-              {message.length}/500
-            </TossText>
-          </View>
-        </TossCard>
+        }
+        showsVerticalScrollIndicator={false}
+      />
 
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
-
-      {/* 전송 버튼 */}
+      {/* 하단 작성 버튼 */}
       <View style={styles.buttonContainer}>
         <TossButton
-          title={loading ? "전송 중..." : "전송"}
-          onPress={handleSend}
+          title="문의 작성하기"
+          onPress={handleCreate}
           variant="primary"
           size="large"
-          disabled={!canSend}
-          loading={loading}
-          style={styles.sendButton}
+          style={styles.createButton}
         />
       </View>
     </SafeAreaView>
@@ -167,62 +277,104 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: TossColors.background,
   },
-  scrollView: {
-    flex: 1,
+  errorContainer: {
+    paddingHorizontal: TossSpacing.lg,
+    paddingVertical: TossSpacing.sm,
+    backgroundColor: TossColors.gray100,
   },
-  scrollContent: {
+  listContent: {
     paddingHorizontal: TossSpacing.lg,
     paddingTop: TossSpacing.lg,
+    paddingBottom: 100, // 하단 버튼 공간 확보
+  },
+  listContentEmpty: {
+    flexGrow: 1,
   },
   uploadCard: {
-    marginBottom: TossSpacing.lg,
-    alignItems: 'center',
-    paddingVertical: TossSpacing.xl,
-  },
-  uploadButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  cameraIcon: {
-    fontSize: 48,
     marginBottom: TossSpacing.md,
+    backgroundColor: TossColors.white,
   },
-  uploadText: {
+  uploadCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: TossSpacing.sm,
+  },
+  uploadCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  fileTypeIcon: {
+    fontSize: 32,
+    marginRight: TossSpacing.md,
+  },
+  uploadCardInfo: {
+    flex: 1,
+  },
+  uploadCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: TossSpacing.xs,
+  },
+  uploadCardTitle: {
+    flex: 1,
+    marginRight: TossSpacing.xs,
+    fontSize: 16,
+    fontWeight: '500',
+    color: TossColors.textPrimary,
+  },
+  uploadCardPreview: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: TossColors.textSecondary,
+    marginBottom: TossSpacing.xs,
+    lineHeight: 16,
+  },
+  responseBadge: {
+    backgroundColor: TossColors.primary,
+    paddingHorizontal: TossSpacing.xs,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  uploadCardMeta: {
+    marginTop: TossSpacing.xs,
+  },
+  arrowIcon: {
+    fontSize: 20,
+    color: TossColors.textDisabled,
+    marginLeft: TossSpacing.sm,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: TossSpacing.xxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: TossSpacing.lg,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginBottom: TossSpacing.xs,
+  },
+  emptySubText: {
     textAlign: 'center',
   },
-  selectedImage: {
-    width: 400,
-    minHeight: 150,
-    resizeMode: 'contain',
-    borderRadius: TossSpacing.md,
-    marginBottom: TossSpacing.md,
-  },
-  textInputCard: {
-    marginBottom: TossSpacing.lg,
-    paddingVertical: TossSpacing.lg,
-    paddingHorizontal: TossSpacing.md,
-  },
-  textInput: {
-    fontSize: 16,
-    color: TossColors.textPrimary,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  characterCount: {
-    alignItems: 'flex-end',
-    marginTop: TossSpacing.sm,
-  },
-  bottomSpacing: {
-    height: TossSpacing.xxl,
-  },
   buttonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: TossSpacing.lg,
     paddingBottom: TossSpacing.md,
     backgroundColor: TossColors.white,
     paddingTop: TossSpacing.md,
+    borderTopWidth: 1,
+    borderTopColor: TossColors.gray200,
   },
-  sendButton: {
+  createButton: {
     width: '100%',
   },
-}); 
+});

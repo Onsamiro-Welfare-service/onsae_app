@@ -31,6 +31,9 @@ export const TossColors = {
   gray700: '#48484a',
   gray800: '#3a3a3c',
   gray900: '#1c1c1e',
+
+  error: '#ff3b30',
+  border: '#f0f0f0',
 };
 
 export const TossSpacing = {

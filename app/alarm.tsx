@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { TossButton } from '@/components/ui/TossButton';
 import { TossCard } from '@/components/ui/TossCard';
 import { TossHeader } from '@/components/ui/TossHeader';
 import { TossText } from '@/components/ui/TossText';
@@ -112,8 +113,6 @@ export default function AlarmScreen() {
         title="알람" 
         showBackButton 
         onBackPress={handleBack}
-        rightIcon="+"
-        onRightPress={handleAddAlarm}
       />
 
       <ScrollView 
@@ -184,6 +183,16 @@ export default function AlarmScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      {/* 하단 작성 버튼 */}
+      <View style={styles.buttonContainer}>
+        <TossButton
+          title="알람 추가하기"
+          onPress={handleAddAlarm}
+          variant="primary"
+          size="large"
+          style={styles.createButton}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -259,5 +268,20 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: TossSpacing.xxl,
+  },
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: TossSpacing.lg,
+    paddingBottom: TossSpacing.md,
+    backgroundColor: TossColors.white,
+    paddingTop: TossSpacing.md,
+    borderTopWidth: 1,
+    borderTopColor: TossColors.gray200,
+  },
+  createButton: {
+    width: '100%',
   },
 });

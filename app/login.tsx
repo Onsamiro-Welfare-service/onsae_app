@@ -5,6 +5,9 @@ import {
   Alert,
   Image,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   TextInput,
   TouchableWithoutFeedback,
@@ -68,91 +71,103 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" backgroundColor={TossColors.background} />
       
-      <TouchableWithoutFeedback onPress={dismissKeyboard}>
-        <View style={styles.content}>
-        {/* 로고/이모지 */}
-        <View style={styles.logoContainer}>
-          <Image source={require('@/assets/images/icon.png')} style={styles.logoImage} />
-          {/* <Text style={styles.logoEmoji}>🏠</Text> */}
-        </View>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableWithoutFeedback onPress={dismissKeyboard}>
+            <View style={styles.content}>
+              {/* 로고/이모지 */}
+              <View style={styles.logoContainer}>
+                <Image source={require('@/assets/images/icon.png')} style={styles.logoImage} />
+                {/* <Text style={styles.logoEmoji}>🏠</Text> */}
+              </View>
 
-        {/* 제목 */}
-        {/* <TossText variant="title1" color="textPrimary" style={styles.title}>
-          온새미로
-        </TossText> */}
+              {/* 제목 */}
+              {/* <TossText variant="title1" color="textPrimary" style={styles.title}>
+                온새미로
+              </TossText> */}
 
-        {/* 부제목 */}
-        <TossText variant="body2" color="textSecondary" style={styles.subtitle}>
-          아이디와 비밀번호를 입력해주세요
-        </TossText>
+              {/* 부제목 */}
+              <TossText variant="body2" color="textSecondary" style={styles.subtitle}>
+                아이디와 비밀번호를 입력해주세요
+              </TossText>
 
-        {/* 로그인 카드 */}
-        <TossCard style={styles.loginCard}>
-          <View style={styles.inputContainer}>
-            {/* <TossText variant="body1" color="textPrimary" style={styles.inputLabel}>
-              아이디
-            </TossText> */}
-            <TextInput
-              style={styles.textInput}
-              placeholder="아이디를 입력하세요"
-              placeholderTextColor={TossColors.textTertiary}
-              value={username}
-              onChangeText={setUsername}
-              maxLength={50}
-              autoFocus={true}
-              editable={!isLoading}
-              autoCapitalize="none"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordInputRef.current?.focus()}
-            />
-          </View>
+              {/* 로그인 카드 */}
+              <TossCard style={styles.loginCard}>
+                <View style={styles.inputContainer}>
+                  {/* <TossText variant="body1" color="textPrimary" style={styles.inputLabel}>
+                    아이디
+                  </TossText> */}
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="아이디를 입력하세요"
+                    placeholderTextColor={TossColors.textTertiary}
+                    value={username}
+                    onChangeText={setUsername}
+                    maxLength={50}
+                    autoFocus={true}
+                    editable={!isLoading}
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  />
+                </View>
 
-          <View style={styles.inputContainer}>
-            <TextInput
-              ref={passwordInputRef}
-              style={styles.textInput}
-              placeholder="비밀번호를 입력하세요"
-              placeholderTextColor={TossColors.textTertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={true}
-              maxLength={50}
-              editable={!isLoading}
-              autoCapitalize="none"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
-          </View>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    ref={passwordInputRef}
+                    style={styles.textInput}
+                    placeholder="비밀번호를 입력하세요"
+                    placeholderTextColor={TossColors.textTertiary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={true}
+                    maxLength={50}
+                    editable={!isLoading}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                  />
+                </View>
 
-          {/* 로그인 버튼 */}
-          <View style={styles.buttonContainer}>
-            <TossButton
-              title={isLoading ? "로그인 중..." : "로그인"}
-              onPress={handleLogin}
-              variant="primary"
-              size="large"
-              disabled={!canLogin}
-              loading={isLoading}
-              style={styles.loginButton}
-            />
-          </View>
-        </TossCard>
+                {/* 로그인 버튼 */}
+                <View style={styles.buttonContainer}>
+                  <TossButton
+                    title={isLoading ? "로그인 중..." : "로그인"}
+                    onPress={handleLogin}
+                    variant="primary"
+                    size="large"
+                    disabled={!canLogin}
+                    loading={isLoading}
+                    style={styles.loginButton}
+                  />
+                </View>
+              </TossCard>
 
-          {/* 도움말 및 회원가입 버튼 */}
-        <View style={styles.footerContainer}>
-          <TossText variant="caption2" color="textTertiary" style={styles.helpText}>
-            계정이 없으신가요?
-          </TossText>
-          <TossButton
-            title="회원가입"
-            onPress={() => router.push('/signup')}
-            variant="outline"
-            size="medium"
-            style={styles.signupButton}
-          />
-        </View>
-      </View>
-      </TouchableWithoutFeedback>
+              {/* 도움말 및 회원가입 버튼 */}
+              <View style={styles.footerContainer}>
+                <TossText variant="caption2" color="textTertiary" style={styles.helpText}>
+                  계정이 없으신가요?
+                </TossText>
+                <TossButton
+                  title="회원가입"
+                  onPress={() => router.push('/signup')}
+                  variant="outline"
+                  size="medium"
+                  style={styles.signupButton}
+                />
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -162,11 +177,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: TossColors.background,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: TossSpacing.lg,
+    paddingVertical: TossSpacing.xl,
   },
   logoContainer: {
     // marginBottom: TossSpacing.sm,

@@ -73,10 +73,13 @@ export default function HomeScreen() {
 
   // 앱이 백그라운드에서 포그라운드로 돌아올 때 문진 상태 재조회
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'active') {
-        // 앱이 포그라운드로 돌아왔을 때 문진 상태 재조회
-        checkSurveyStatus();
+        // 로그인 상태 확인 후 문진 상태 재조회
+        const isLoggedIn = await UserService.isLoggedIn();
+        if (isLoggedIn) {
+          checkSurveyStatus();
+        }
       }
     });
 

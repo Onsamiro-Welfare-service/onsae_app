@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-
 import { API_BASE_URL } from '@/constants/config';
+import { getUserFriendlyErrorMessage } from '@/utils/errorUtils';
 
 const BASE_URL = Platform.select({
   ios: API_BASE_URL,
@@ -33,7 +33,18 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     }
   } catch {}
 
-  const res = await fetch(url, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers });
+  } catch (fetchError: any) {
+    // 네트워크 에러 (연결 실패, 타임아웃 등)
+    const friendlyMessage = getUserFriendlyErrorMessage(
+      fetchError?.message || 'Network request failed',
+      undefined
+    );
+    throw new Error(friendlyMessage);
+  }
+
   const text = await res.text();
   const isJson = (res.headers.get('content-type') || '').includes('application/json');
   const data = (isJson && text) ? JSON.parse(text) : (undefined as unknown as T);
@@ -49,11 +60,11 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
       } else if (errorData?.message) {
         message = errorData.message;
       }
-      // TossAlert 메시지 표시
-      console.log('message',message);
-
     }
-    throw new Error(message);
+    
+    // 사용자 친화적인 메시지로 변환
+    const friendlyMessage = getUserFriendlyErrorMessage(message, undefined);
+    throw new Error(friendlyMessage);
   }
 
   return data as T;

@@ -23,6 +23,7 @@ import { TossColors, TossSpacing } from '@/constants/toss-design-system';
 
 // Import user service
 import UserService from '@/services/userService';
+import { getUserFriendlyErrorMessage } from '@/utils/errorUtils';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -51,10 +52,14 @@ export default function LoginScreen() {
         await UserService.saveUserInfo(result.user);
         router.replace('/');
       } else {
-        Alert.alert('로그인 실패', result.message || '로그인에 실패했습니다.');
+        // 사용자 친화적인 메시지로 변환
+        const friendlyMessage = getUserFriendlyErrorMessage(result.message, 'login');
+        Alert.alert('로그인 실패', friendlyMessage);
       }
-    } catch (error) {
-      Alert.alert('오류', '로그인 중 오류가 발생했습니다.');
+    } catch (error: any) {
+      // 사용자 친화적인 메시지로 변환
+      const friendlyMessage = getUserFriendlyErrorMessage(error?.message, 'login');
+      Alert.alert('로그인 실패', friendlyMessage);
       console.error('Login error:', error);
     } finally {
       setIsLoading(false);
